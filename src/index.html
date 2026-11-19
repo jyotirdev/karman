@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net blob:; style-src 'unsafe-inline' https://fonts.googleapis.com; media-src https: http: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Kármán: Earth, live</title>
+<meta name="description" content="Kármán is a live globe of the planet from the edge of space: earthquakes, storms, fires, satellites, nuclear sites, undersea cables and live cameras, all from public data.">
+<meta name="theme-color" content="#000000">
+<meta property="og:title" content="Kármán">
+<meta property="og:description" content="Earth, live, from the edge of space.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5.500' fill='%23000'/%3E%3Cpath d='M3.600 15.400A13 13 0 0 1 20.400 15.400' fill='none' stroke='%23f5f5f7' stroke-width='2.700' stroke-linecap='round'/%3E%3Cpath d='M3.400 10.640A17 17 0 0 1 20.600 10.640' fill='none' stroke='%23f5f5f7' stroke-opacity='.62' stroke-width='1.100' stroke-linecap='round'/%3E%3Ccircle cx='18.370' cy='9.540' r='1.900' fill='%23ff9f0a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://earthquake.usgs.gov" crossorigin>
+<link rel="preconnect" href="https://eonet.gsfc.nasa.gov" crossorigin>
+<link rel="preconnect" href="https://celestrak.org" crossorigin>
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://services.swpc.noaa.gov" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div id="app" class="booting">
+  <canvas id="gl" aria-label="Globe showing live earthquakes, weather, satellites and news"></canvas>
+
+  <div id="overlay">
+    <div id="labels"></div>
+    <div class="reticle" id="reticle" data-off>
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round">
+        <circle cx="17" cy="17" r="12.5" opacity=".9"/><path d="M17 1v6M17 27v6M1 17h6M27 17h6" opacity=".7"/>
+      </svg>
+    </div>
+    <div class="tour-ring" id="tour-ring" data-off><i></i><i></i><i></i></div>
+    <div class="tip" id="tip" data-off></div>
+  </div>
+  <div class="boot-flash" id="boot-flash"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1.900 15.910A15 15 0 0 1 22.100 15.910" stroke="#f5f5f7" stroke-width="2.6" stroke-linecap="round"/><path d="M1.700 10.320A19.600 19.600 0 0 1 22.300 10.320" stroke="#f5f5f7" stroke-opacity=".7" stroke-width=".95" stroke-linecap="round"/><circle cx="19.340" cy="8.830" r="1.700" fill="#ff9f0a"/></svg>
+      <h1 class="wordmark">Kármán</h1>
+      <button class="tour-start" id="view-tour" data-act="tour" title="The globe flies itself round every notable event happening now (T)"><svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M4 2.6v8.8a.6.6 0 0 0 .92.5l6.7-4.4a.6.6 0 0 0 0-1L4.92 2.1A.6.6 0 0 0 4 2.6z"/></svg>Tour</button>
+    </div>
+    <div class="search glass" id="search">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="4.2"/><path d="M9.2 9.2 12.5 12.5"/></svg>
+      <input id="search-input" type="search" placeholder="Search a place, satellite or radio station" autocomplete="off" spellcheck="false" aria-label="Search any place" role="combobox" aria-expanded="false" aria-controls="search-results">
+      <i class="spin" aria-hidden="true"></i><kbd>/</kbd>
+      <div class="search-results glass" id="search-results" role="listbox" hidden></div>
+    </div>
+    <div class="clock"><span id="clock-date"></span><span class="mono" id="clock-time"></span></div>
+  </header>
+
+  <aside class="dock glass" id="dock" aria-label="Layers, events, news and sources">
+    <div class="tabs seg" role="tablist">
+      <button role="tab" data-tab="now">Now</button>
+      <button role="tab" data-tab="layers">Layers</button>
+      <button role="tab" data-tab="latest">Latest</button>
+      <button role="tab" data-tab="news">News</button>
+      <button role="tab" data-tab="guide">Guide</button>
+      <button role="tab" data-tab="sources">Sources</button>
+    </div>
+    <div class="tabpanel" id="tab-now" role="tabpanel" hidden></div>
+    <div class="tabpanel scroll" id="tab-layers" role="tabpanel"></div>
+    <div class="tabpanel scroll" id="tab-latest" role="tabpanel" hidden></div>
+    <div class="tabpanel scroll" id="tab-news" role="tabpanel" hidden></div>
+    <div class="tabpanel scroll" id="tab-guide" role="tabpanel" hidden></div>
+    <div class="tabpanel scroll" id="tab-sources" role="tabpanel" hidden></div>
+  </aside>
+
+  <aside class="inspector glass" id="inspector" aria-label="Details">
+    <div id="summary"></div>
+    <div id="detail" hidden></div>
+  </aside>
+
+  <div class="glass player" id="player" data-state="idle" hidden>
+    <button class="icon-btn play" id="pl-toggle" aria-label="Pause">
+      <svg class="i-pause" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2" width="3.2" height="10" rx="1" fill="currentColor"/><rect x="8.3" y="2" width="3.2" height="10" rx="1" fill="currentColor"/></svg>
+      <svg class="i-play" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 2.2v9.6a.6.6 0 0 0 .9.5l8-4.8a.6.6 0 0 0 0-1L4.400 1.7a.6.6 0 0 0-.9.5Z" fill="currentColor"/></svg>
+      <i class="spin dark"></i>
+    </button>
+    <button class="pl-info" id="pl-open" title="Show this station on the globe">
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="pl-text"><b id="pl-title"></b><small id="pl-state"></small></span>
+    </button>
+    <input type="range" id="pl-vol" min="0" max="1" step="0.02" aria-label="Volume">
+    <button class="icon-btn" id="pl-scan" aria-pressed="false" aria-label="Scan: hop to a new station every 24 seconds" title="Scan: hop to a new station every 24 seconds"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.2 11.6a6.2 6.2 0 0 1 0-7.2M12.8 4.400a6.200 6.200 0 0 1 0 7.200M5.400 9.900a3.300 3.300 0 0 1 0-3.800M10.600 6.100a3.300 3.300 0 0 1 0 3.800"/><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none"/></svg></button>
+    <button class="icon-btn" id="pl-shuffle" aria-label="Tune to a random station" title="Tune to a random station"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5h2.8c1.6 0 2.4.8 3.3 2.2l.8 1.6c.9 1.400 1.700 2.200 3.300 2.200h2.800M12.5 2.500l2 2-2 2M12.5 8.500l2 2-2 2M1.5 10.500h2.800c.8 0 1.400-.2 1.900-.6M9.800 5.100c.5-.4 1.100-.6 1.900-.6h2.800"/></svg></button>
+    <button class="icon-btn" id="pl-close" aria-label="Stop the radio" title="Stop the radio"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.500" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>
+  </div>
+
+  <div class="glass viewctl" role="group" aria-label="View">
+    <button class="icon-btn" id="zoom-out" aria-label="Zoom out"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 8h9"/></svg></button>
+    <button class="icon-btn" id="zoom-in" aria-label="Zoom in"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 8h9M8 3.5v9"/></svg></button>
+    <span class="sep"></span>
+    <button class="icon-btn" id="view-me" aria-label="Go to my area" title="Go to my area (approximate, from your internet connection)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M13.5 2.5 2.8 7.1l4.4 1.7 1.7 4.4z"/></svg><i class="spin"></i></button>
+    <button class="icon-btn" id="view-reset" aria-label="Reset view" title="Reset view"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4"/><path d="M2.4 2.6v2.9h2.9"/></svg></button>
+    <button class="icon-btn" id="view-orbits" aria-label="Zoom out to see every orbit" title="Zoom out to see every orbit"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="8" r="2.2"/><ellipse cx="8" cy="8" rx="7" ry="3.2" transform="rotate(-28 8 8)"/></svg></button>
+    <button class="icon-btn" id="view-spin" aria-label="Spin the globe" title="Spin the globe" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="5.6"/><ellipse cx="8" cy="8" rx="2.4" ry="5.6"/></svg></button>
+  </div>
+
+  <button class="glass tour-pill" data-act="tour" aria-label="Take the live tour"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M4 2.6v8.8a.6.6 0 0 0 .92.5l6.7-4.4a.6.6 0 0 0 0-1L4.92 2.1A.6.6 0 0 0 4 2.6z"/></svg>Tour</button>
+
+  <div class="glass legend" id="legend" hidden></div>
+
+  <div class="banner" id="banner" hidden></div>
+  <div id="netbar" aria-hidden="true"></div>
+
+  <div class="tour" id="tour" role="region" aria-label="Live tour" hidden>
+    <div class="tour-shade"></div>
+    <div class="tour-sweep" aria-hidden="true"><i id="tour-sweep"></i></div>
+    <header class="tour-top">
+      <svg class="mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1.900 15.910A15 15 0 0 1 22.100 15.910" stroke="#f5f5f7" stroke-width="2.6" stroke-linecap="round"/><path d="M1.700 10.320A19.600 19.600 0 0 1 22.300 10.320" stroke="#f5f5f7" stroke-opacity=".7" stroke-width=".95" stroke-linecap="round"/><circle cx="19.340" cy="8.830" r="1.700" fill="#ff9f0a"/></svg>
+      <b class="wordmark">Kármán</b>
+      <span class="tour-live"><i></i><span>Live tour</span></span>
+      <dl class="tour-tele" aria-label="Where the camera is">
+        <div><dt>Altitude</dt><dd id="tt-alt"></dd></div>
+        <div class="tt-over"><dt>Over</dt><dd id="tt-pos"></dd></div>
+        <div><dt>Flown</dt><dd id="tt-km"></dd></div>
+        <div><dt>UTC</dt><dd id="tour-clock"></dd></div>
+      </dl>
+    </header>
+    <aside class="tour-side" aria-label="Everything on the globe, what is near this event, and what comes next">
+      <section><h3>Happening now</h3><ul class="tour-cats" id="tour-cats"></ul></section>
+      <section id="tour-near-box"><h3>Near this event</h3><ul class="tour-rows" id="tour-near"></ul></section>
+      <section><h3>Up next</h3><ol class="tour-rows" id="tour-queue"></ol></section>
+    </aside>
+    <article class="tour-cap" aria-live="polite">
+      <p class="tour-kick" id="tour-kick"></p>
+      <h2 id="tour-title"></h2>
+      <p class="tour-text" id="tour-text"></p>
+      <dl class="tour-facts" id="tour-facts"></dl>
+      <p class="tour-place" id="tour-place"></p>
+    </article>
+    <div class="tour-prog"><ol class="tour-dots" id="tour-dots"></ol><span class="mono" id="tour-count"></span></div>
+    <div class="glass tour-ctl" role="group" aria-label="Tour controls">
+      <button class="icon-btn" id="tour-prev" aria-label="Previous stop" title="Previous stop (left arrow)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+      <button class="icon-btn" id="tour-play" data-state="playing" aria-label="Pause the tour"><svg class="i-pause" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="3.2" width="2.6" height="9.6" rx=".8"/><rect x="9.4" y="3.2" width="2.6" height="9.6" rx=".8"/></svg><svg class="i-play" width="16" height="16" viewBox="0 0 14 14" fill="currentColor"><path d="M4 2.6v8.8a.6.6 0 0 0 .92.5l6.7-4.4a.6.6 0 0 0 0-1L4.92 2.1A.6.6 0 0 0 4 2.6z"/></svg></button>
+      <button class="icon-btn" id="tour-next" aria-label="Next stop" title="Next stop (right arrow)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+      <span class="sep"></span>
+      <button class="tour-pace" id="tour-pace" aria-label="Change the pace of the tour"></button>
+      <button class="icon-btn" id="tour-music" data-state="off" aria-pressed="false" aria-label="Turn the music on"><svg class="i-on" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2h2.300L8 3.500v9L4.800 9.800H2.500z"/><path d="M10.600 5.800a3.200 3.200 0 0 1 0 4.400M12.500 4a5.700 5.700 0 0 1 0 8"/></svg><svg class="i-off" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2h2.300L8 3.500v9L4.800 9.800H2.500z"/><path d="M10.800 6.300l3.200 3.400M14 6.300l-3.200 3.400"/></svg></button>
+      <button class="icon-btn" id="tour-full" aria-label="Fill the screen" title="Fill the screen (F)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+      <button class="icon-btn" id="tour-exit" aria-label="End the tour" title="End the tour (Esc)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>
+    </div>
+  </div>
+
+  <div class="boot" id="boot" role="dialog" aria-label="Loading Kármán">
+    <header class="boot-top">
+      <svg class="mark" width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1.900 15.910A15 15 0 0 1 22.100 15.910" stroke="#f5f5f7" stroke-width="2.6" stroke-linecap="round"/><path d="M1.700 10.320A19.600 19.600 0 0 1 22.300 10.320" stroke="#f5f5f7" stroke-opacity=".7" stroke-width=".95" stroke-linecap="round"/><circle cx="19.340" cy="8.830" r="1.700" fill="#ff9f0a"/></svg>
+      <div><h2 class="wordmark">Kármán</h2><p>Earth, live, from the edge of space</p></div>
+    </header>
+    <div class="boot-read" aria-hidden="true">
+      <p class="boot-phase"><i></i><span id="bo-phase">Forming the continents</span><b class="mono" id="bo-time">0:00</b></p>
+      <p class="boot-big mono"><b id="bo-pct">0</b><i>%</i></p>
+      <div class="boot-meter">
+        <span class="boot-bar"><i id="bo-bar"></i></span>
+        <i class="boot-head" id="bo-head"></i>
+        <span class="boot-gate" id="bo-gate"><i></i><span id="bo-gate-word">Globe opens here</span></span>
+      </div>
+      <p class="boot-line" id="bo-now"></p>
+      <ul class="boot-groups" id="bo-groups"></ul>
+      <dl class="boot-stats">
+        <div><dt>Feeds in</dt><dd class="mono" id="bo-count">0 of 0</dd></div>
+        <div><dt>Loading now</dt><dd class="mono" id="bo-live">0</dd></div>
+        <div><dt>On the globe</dt><dd class="mono" id="bo-things">0</dd></div>
+      </dl>
+    </div>
+    <ol class="boot-log boot-feed" id="bo-log" aria-hidden="true"></ol>
+    <ol class="boot-col left" id="boot-a" aria-label="Feeds loading"></ol>
+    <ol class="boot-col right" id="boot-b" aria-label="Feeds loading"></ol>
+    <div class="boot-foot">
+      <p class="boot-status"><b class="mono" id="boot-pct">0%</b><span id="boot-now" aria-live="polite">Starting…</span></p>
+      <ol class="boot-log" id="boot-log" aria-hidden="true"></ol>
+      <button class="btn big" id="boot-go">Skip and start exploring</button>
+      <ul class="tips">
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5v13M1.5 8h13M8 1.5 6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2"/></svg><span><b>Drag</b> to turn the globe, <b>scroll</b> to zoom</span></li>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.4"/><circle cx="8" cy="8" r="6" opacity=".5"/></svg><span><b>Click a marker</b> to learn what it is, or <b>any place</b> for its weather</span></li>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg><span><b>Search</b> for a city, a country or a satellite</span></li>
+        <li><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/><circle cx="5.5" cy="4" r="1.4" fill="#111"/><circle cx="10.5" cy="8" r="1.4" fill="#111"/><circle cx="6.5" cy="12" r="1.4" fill="#111"/></svg><span>The <b>Guide</b> tab explains every layer in plain words</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <footer class="statusbar">
+    <button id="src-summary" title="Show every data source"></button>
+    <div class="mini" id="boot-mini" hidden></div>
+    <div class="cursor mono" id="cursor"></div>
+    <div class="help">Drag to turn, scroll to zoom, click a marker or any place</div>
+  </footer>
+  <audio id="radio" preload="none"></audio>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script>
+(function () {
+'use strict';
+/*__JS__*/
+})();
+</script>
+</body>
+</html>

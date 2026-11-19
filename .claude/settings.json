@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node tools/build.js)",
+      "Bash(node --check *)",
+      "Bash(node tests/smoke.js *)",
+      "Bash(python3 tools/make-data.py)"
+    ],
+    "deny": [
+      "Edit(/index.html)"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the single file
+        run: node tools/build.js
+      - name: Check the program parses
+        run: node --check .build/app.check.js
+      - name: Check the committed index.html matches the source
+        run: git diff --exit-code -- index.html

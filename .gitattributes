@@ -1,0 +1,6 @@
+# the built app is generated from src/: keep it out of language statistics and collapse it in diffs
+index.html linguist-generated=true
+assets/*.b64 linguist-generated=true -diff
+assets/*.json linguist-generated=true
+data/** linguist-vendored=true
+*.webm binary

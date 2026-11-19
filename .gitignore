@@ -1,0 +1,11 @@
+node_modules/
+.build/
+tests/out/
+.DS_Store
+Thumbs.db
+*.log
+.netlify/
+
+# personal agent settings, never shared
+CLAUDE.local.md
+.claude/settings.local.json
