@@ -14,7 +14,7 @@ const opening = { on: !reduceMotion, gone: reduceMotion, travel: 0, done: 0, hit
 const BOOT_GROUPS = [
   ['Earth and hazards', ['Globe, borders and city lights', 'Earthquakes', 'Fires, storms and volcanoes', 'Fire hotspots', 'Disaster alerts', 'US weather warnings', 'Fireballs and asteroids', 'Carbon dioxide', 'NASA satellite view', 'Earth from deep space', 'Wildlife sightings', 'Wild sounds']],
   ['Weather and Sun', ['City weather', 'Wind', 'Clouds', 'Aurora forecast', 'Space weather', 'The Sun']],
-  ['Infrastructure', ['Nuclear facilities', 'Undersea cables', 'Live cameras']],
+  ['Infrastructure', ['Nuclear facilities', 'Undersea cables', 'Power stations and pipelines', 'Live cameras']],
   ['In orbit', ['Space stations', 'Every active satellite', 'Space debris', 'Spent rocket stages', 'Dead satellites', 'Deep space antennas', 'Close calls in orbit', 'Rocket launches', 'Recent launches']],
   ['News and radio', ['World news', 'Most read today', 'Space news', 'Radio stations']]
 ];

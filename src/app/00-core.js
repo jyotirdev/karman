@@ -264,30 +264,93 @@ const LAYERS = {
   borders:   { g: 'map', name: 'Country borders', color: '#8e8e93', line: true, about: 'Thin lines between countries. They get clearer as you zoom in.' },
   nuclear:   { g: 'infra', name: 'Nuclear facilities', one: 'Nuclear site', color: '#4c9bff', shape: 6,
     about: 'Every nuclear power station on record with the International Atomic Energy Agency, as of March 2024. A bright hexagon has reactors running, and the bigger it is the more electricity it makes; a faint one is planned, paused or shut down. Small hexagons are research reactors, fuel plants and waste stores listed on Wikidata. Click one for its reactors.' },
+  coal:      { g: 'infra', name: 'Coal power stations', one: 'Coal power station', color: '#c9a383', shape: 4, off: true,
+    about: 'Every coal-fired power station of 1,000 megawatts or more, and the biggest being built, from Global Energy Monitor. The bigger the square, the more electricity it can make; a faint one is still under construction.' },
+  gas:       { g: 'infra', name: 'Gas and oil power stations', one: 'Gas power station', color: '#ff9d6c', shape: 4, off: true,
+    about: 'Every power station of 1,000 megawatts or more that burns natural gas or oil, and the biggest being built, from Global Energy Monitor.' },
+  hydro:     { g: 'infra', name: 'Hydropower dams', one: 'Hydropower station', color: '#5ec8ff', shape: 4, off: true,
+    about: 'Every hydropower station of 500 megawatts or more, and the biggest being built, from Global Energy Monitor.' },
+  solar:     { g: 'infra', name: 'Solar farms', one: 'Solar farm', color: '#ffd84d', shape: 4, off: true,
+    about: 'Every solar farm of 300 megawatts or more, and the biggest being built, from Global Energy Monitor.' },
+  wind:      { g: 'infra', name: 'Wind farms', one: 'Wind farm', color: '#9ff0d0', shape: 4, off: true,
+    about: 'Every wind farm of 300 megawatts or more, on land and at sea, and the biggest being built, from Global Energy Monitor.' },
+  lng:       { g: 'infra', name: 'LNG terminals', one: 'LNG terminal', color: '#f7b6ff', shape: 2, off: true,
+    about: 'The ports where natural gas is chilled into a liquid and loaded onto tankers, and the ports that take it off them, from Global Energy Monitor. A faint diamond is still being built.' },
+  pipes:     { g: 'infra', name: 'Gas pipelines', color: '#e2a03f', line: true, off: true,
+    about: 'The long-distance pipelines that carry natural gas across countries and under seas: every one of 200 km or more, as mapped by Global Energy Monitor. Fainter lines are being built or standing idle. Click a pipeline for its length and what it can carry.' },
   cables:    { g: 'infra', name: 'Undersea internet cables', color: '#6fd6e8', line: true,
     about: 'The fibre-optic cables on the sea floor that carry almost all internet traffic between continents, as mapped by TeleGeography. Fainter lines are cables not yet laid. Click a cable for its name, age and owners.' },
   overlay:   { g: 'map', name: 'NASA satellite view', color: '#ff7ab6', tex: true, pick: true,
-    about: 'Drape one of NASA’s latest whole-Earth measurements over the globe: rain, sea temperature, snow and ice, haze or air pollution.' },
+    about: 'Drape one of NASA’s latest whole-Earth measurements over the globe: rain, snow and ice, sea temperature and algae, haze, air pollution and volcanic gas, ground temperature, soil moisture, vegetation, floods, or last night’s lights. Zoom in and the picture sharpens.' },
   lights:    { g: 'map', name: 'City lights at night', color: '#ffe9c4', tex: true, about: 'On the dark side of the planet, the lights of towns and cities as photographed by NASA.' },
   grid:      { g: 'map', name: 'Latitude and longitude grid', color: '#8e8e93', line: true, off: true, about: 'Reference lines every 15 degrees.' }
 };
+/* NASA satellite views, grouped as the picker shows them. Each is drawn from one or more GIBS layers.
+   parts   what to draw, bottom first, each [layers, days, seek, spare]
+             layers  the names for one request, drawn left to right
+             days    0 takes whatever NASA has newest; n lays the n latest days over each other, so a full day sits under today's first passes
+             seek    1 for a measurement NASA publishes days late: the newest day it has is looked for first
+             spare   layers to fall back on when the first set has gone quiet, or [layers, days] if they need a different number of days
+   tone    a recolouring of the finished picture (OVER_TONE in 81-views.js), for measurements NASA paints over the whole globe
+   bar     the colour scale in the legend: [colours low to high, low label, high label]
+   keys    or [colour, meaning] pairs, for a view that shows classes rather than a scale
+   fine    the narrowest window, in degrees of longitude, worth fetching when zoomed in; left out where the measurement is too coarse to sharpen
+   Layer names, colour scales and publishing delays were checked against NASA's own service in November 2026. Only instruments with years
+   ahead of them are used: VIIRS and OMPS on NOAA-20 and NOAA-21, SMAP, Sentinel-5P, and NASA's multi-satellite rain and sea analyses.
+   Nothing here depends on Terra (switched off on 1 December 2026) or on Aqua and Aura, which follow it. */
 const OVERLAYS = [
-  ['', 'Off'],
-  ['rain', 'Rain and snow', 'IMERG_Precipitation_Rate', 'png', 'Rain and snow falling in the last few hours, measured from orbit by a fleet of weather satellites. Green is light rain, yellow and red are heavy. Blue shades are snow.'],
-  ['sst', 'Sea temperature', 'GHRSST_L4_MUR_Sea_Surface_Temperature', 'png', 'The temperature of the sea surface. Purple and blue water is cold, yellow and red water is warm.'],
-  ['ssta', 'Sea warmer than usual', 'GHRSST_L4_MUR25_Sea_Surface_Temperature_Anomalies', 'png', 'How the sea surface compares with the long-term average for this date. Red is warmer than usual, blue is cooler. Large red patches are marine heatwaves.'],
-  ['snow', 'Snow and sea ice', 'MODIS_Terra_NDSI_Snow_Cover,AMSRU2_Sea_Ice_Concentration_12km', 'png', 'Snow lying on land and ice floating on the sea, as last seen from orbit. Gaps are places that were under cloud or in polar darkness.'],
-  ['haze', 'Smoke, dust and haze', 'MODIS_Combined_Value_Added_AOD', 'png', 'Tiny particles hanging in the air: wildfire smoke, desert dust and city haze. The deeper the colour, the thicker the haze. Gaps were under cloud.'],
-  ['no2', 'Air pollution', 'TROPOMI_L2_Nitrogen_Dioxide_Tropospheric_Column', 'png', 'Nitrogen dioxide, a gas from engines, power stations and industry. The deeper the colour, the more of it. It gathers over cities and busy shipping lanes.'],
-  ['true', 'True colour', 'VIIRS_NOAA20_CorrectedReflectance_TrueColor', 'jpeg', 'The Earth as a camera in orbit saw it on its latest daytime passes. Black strips are places the satellite has not flown over yet.']
+  { id: '', name: 'Off' },
+  { id: 'rain', g: 'Weather', name: 'Rain and snow', parts: [['IMERG_Precipitation_Rate']], fine: 90,
+    text: 'Rain and snow falling in the last few hours, measured from orbit by a fleet of weather satellites. Green is light rain, yellow and red are heavy. Blue shades are snow.' },
+  { id: 'snow', g: 'Weather', name: 'Snow and sea ice', tone: 'ice', fine: 22.5,
+    parts: [['GHRSST_L4_MUR_Sea_Ice_Concentration', 0, 0, 'GHRSST_L4_MUR25_Sea_Ice_Concentration'], ['VIIRS_NOAA20_NDSI_Snow_Cover', 2, 0, 'VIIRS_NOAA21_NDSI_Snow_Cover']],
+    text: 'Snow lying on land and ice floating on the sea. Snow runs from pale yellow where it is patchy to red where it is complete; sea ice from purple where it is loose, through blue and green, to white where it is solid. Gaps on land were under cloud or in polar darkness.' },
+  { id: 'true', g: 'Weather', name: 'True colour', fmt: 'jpeg', fine: 11.25,
+    parts: [['VIIRS_NOAA20_CorrectedReflectance_TrueColor', 3, 0, 'VIIRS_NOAA21_CorrectedReflectance_TrueColor']],
+    text: 'The Earth as a camera in orbit photographed it on its daytime passes. Today’s passes lie over yesterday’s, so the whole globe is covered; where the two meet, the clouds can jump. Places in polar night stay dark.' },
+  { id: 'sst', g: 'Sea', name: 'Sea temperature', parts: [['GHRSST_L4_MUR_Sea_Surface_Temperature']], fine: 22.5,
+    bar: ['#2b001a,#65035d,#510963,#1f1c5d,#21499b,#2a88d7,#20a371,#b0e500,#ffb900,#f05b00,#b51d00,#6b0200', '0 °C', '32 °C'],
+    text: 'The temperature of the sea surface. Purple and blue water is cold, yellow and red water is warm.' },
+  { id: 'ssta', g: 'Sea', name: 'Sea warmer than usual', parts: [['GHRSST_L4_MUR25_Sea_Surface_Temperature_Anomalies']],
+    bar: ['#6b00db,#9600ca,#414be6,#00aeff,#18fce5,#76ff8c,#b1ff98,#bfdbb0,#d5d5ac,#fff679,#ffc209,#ff9100,#ff3d00,#f3002d,#d30085,#88000f', '3 °C cooler', '3 °C warmer'],
+    text: 'How the sea surface compares with the long-term average for this date. Red is warmer than usual, blue is cooler. Large red patches are marine heatwaves.' },
+  { id: 'chl', g: 'Sea', name: 'Ocean plant life', parts: [['VIIRS_NOAA20_Chlorophyll_a,VIIRS_NOAA21_Chlorophyll_a', 3]], fine: 11.25,
+    bar: ['#93006c,#5a00a5,#1e00e1,#0035ff,#00a0ff,#00ffef,#00ff4f,#58ff00,#f8ff00,#ffb300,#ff6300,#ff1300,#b40000,#690000', '0.01', '20 mg of chlorophyll per m³'],
+    text: 'Chlorophyll in the top of the sea: the microscopic plants that feed almost everything else in it. Purple and blue water is nearly empty, green is rich, and yellow, orange and red are thick blooms of algae. Gaps were under cloud or in the glare of the Sun.' },
+  { id: 'haze', g: 'Air', name: 'Smoke, dust and haze', tone: 'haze', parts: [['VIIRS_NOAA20_AOD_Deep_Blue_Land_Ocean,VIIRS_NOAA21_AOD_Deep_Blue_Land_Ocean', 2]], fine: 45,
+    bar: ['rgba(255,235,135,0),#ffc94c,#ff992a,#ff671c,#f72d10,#d7090b,#a1000e', 'Hazy', 'Thick'],
+    text: 'Tiny particles hanging in the air: wildfire smoke, desert dust and city haze. Clear air is left uncoloured; the deeper the colour, the thicker the haze. Under cloud nothing can be measured.' },
+  { id: 'no2', g: 'Air', name: 'Air pollution', tone: 'no2', parts: [['TROPOMI_L2_Nitrogen_Dioxide_Tropospheric_Column', 2, 1]], fine: 45,
+    bar: ['rgba(255,230,122,0),#ffd65c,#ffc145,#ffa42f,#ff8a24,#ff6f1d,#ff4815,#f52810,#e5110a,#7f000e', 'Raised', 'Severe'],
+    text: 'Nitrogen dioxide, a gas from engines, power stations, industry and fires. Clean air is left uncoloured; yellow is a raised level, orange and red are heavy pollution. It gathers over big cities and industrial regions. NASA publishes this one about a week late.' },
+  { id: 'so2', g: 'Air', name: 'Volcanic gas', tone: 'so2', parts: [['OMPS_NOAA20_SO2_Middle_Troposphere', 2]],
+    bar: ['rgba(255,200,21,.5),#ffd425,#ffe251,#fff19c,#ffffff', '1', '32 Dobson units'],
+    text: 'Sulphur dioxide, the gas that erupting and smouldering volcanoes pour out, measured about eight kilometres up. The brighter the patch, the more gas. Lone faint specks are noise in the instrument.' },
+  { id: 'lst', g: 'Land', name: 'Ground temperature', parts: [['VIIRS_NOAA20_Land_Surface_Temp_Day,VIIRS_NOAA21_Land_Surface_Temp_Day', 3]], fine: 11.25,
+    bar: ['#c900ff,#7d00ff,#2d00ff,#0033ff,#0099ff,#00ffff,#4dff4d,#95ff00,#e2ff00,#ffdc00,#ffa000,#ff6100,#ff2500,#ff0100', '−73 °C', '77 °C'],
+    text: 'How hot the ground itself is in daylight, which can be far hotter than the air above it. Purple and blue ground is frozen hard, green is near freezing, yellow is warm, and orange and red are scorching. Gaps were under cloud on every pass.' },
+  { id: 'soil', g: 'Land', name: 'Soil moisture', parts: [['SMAP_L4_Analyzed_Surface_Soil_Moisture', 1, 1]], fine: 90,
+    bar: ['#ffa200,#ffd000,#fffb00,#9acc00,#249100,#00ab57,#00e9d3,#00beff,#0047ff,#0000e2,#00009a', 'Dry', 'Soaked'],
+    text: 'How wet the top few centimetres of soil are, from NASA’s SMAP satellite blended with a weather model. Orange and yellow soil is dry, green is damp, and blue is soaked. NASA publishes this one about three days late.' },
+  { id: 'ndvi', g: 'Land', name: 'Vegetation', parts: [['VIIRS_NOAA20_NDVI_8Day', 1, 1, 'VIIRS_NOAA21_NDVI_8Day']], fine: 11.25,
+    bar: ['#e1d2c6,#b09f8f,#9a6e5a,#80b006,#438d01,#0a6901,#002401', 'Bare', 'Dense forest'],
+    text: 'How green and leafy the land is, averaged over the eight days up to the date below. Pale and brown land is bare, green land is growing, and the darkest green is dense forest.' },
+  { id: 'flood', g: 'Land', name: 'Floods', tone: 'flood', parts: [['VIIRS_Combined_Flood_2-Day', 2]], fine: 11.25,
+    keys: [['#fa1e24', 'Flood'], ['#ffff00', 'Floods most years'], ['#32d2f5', 'Usual water'], ['rgba(175,175,175,.45)', 'Not seen']],
+    text: 'Water lying where there is normally dry land, as two satellites saw it over the last two days. Grey could not be checked, because of cloud or steep hills. Floods are small from this far out: zoom in on a river or a coast.' },
+  { id: 'night', g: 'Land', name: 'Lights last night', tone: 'lights', fine: 11.25,
+    parts: [['VIIRS_NOAA20_GapFilled_BRDF_Corrected_DayNightBand_Radiance', 1, 1, ['VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance', 2]]],
+    bar: ['rgba(255,214,150,0),#ffdc9c,#fff0d8,#fffaf2', 'Dim', 'Bright'],
+    text: 'Light from towns, roads, gas flares and fishing fleets, measured by a camera in orbit on its latest night passes, with moonlight taken out. A city that has lost its power after a storm or an earthquake shows as a dark gap where there was light.' }
 ];
+const OVERLAY_GROUPS = ['Weather', 'Sea', 'Air', 'Land'];
 const MARKER_KEYS = Object.keys(LAYERS).filter(k => LAYERS[k].shape != null);
 const EONET_MAP = { wildfires: 'fires', severeStorms: 'storms', volcanoes: 'volcanoes', seaLakeIce: 'ice' };
 const EVENT_KEYS = ['fires', 'storms', 'volcanoes', 'ice', 'other'];
 const SAT_KEYS = Object.keys(LAYERS).filter(k => LAYERS[k].sat);
 const DENSE = { starlink: 1, constel: 1, sats: 1, debris: 1, rockets: 1, dead: 1 };
 const JUNK = { debris: 1, rockets: 1, dead: 1 };                                   /* loaded on request, not with the active catalogue */          /* too crowded to click through when they sit over the globe */
-const PICK_ORDER = ['stations', 'dsn', 'launches', 'storms', 'volcanoes', 'alerts', 'warnings', 'news', 'quakes', 'fires', 'fireballs', 'ice', 'other', 'nuclear', 'wildlife', 'sounds', 'cities', 'radio', 'cams', 'nav', 'geo', 'hotspots', 'constel', 'sats', 'starlink', 'rockets', 'dead', 'debris'];
+const PICK_ORDER = ['stations', 'dsn', 'launches', 'storms', 'volcanoes', 'alerts', 'warnings', 'news', 'quakes', 'fires', 'fireballs', 'ice', 'other', 'nuclear', 'lng', 'hydro', 'coal', 'gas', 'solar', 'wind', 'wildlife', 'sounds', 'cities', 'radio', 'cams', 'nav', 'geo', 'hotspots', 'constel', 'sats', 'starlink', 'rockets', 'dead', 'debris'];
 
 const SWATCH_AS = { pastlaunch: 'launches', mostread: 'news' };
 function swatch(key) {

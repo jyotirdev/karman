@@ -3,12 +3,12 @@
    ============================================================ */
 function onSelect(it) {
   if (it.layer === 'place' || it.layer === 'cities') loadPlace(it);
-  else if (it.layer === 'cable') showCable(it);
+  else if (it.layer === 'cable' || it.layer === 'pipe') showCable(it);
   else if (it.layer === 'radio' && radio.current && radio.current !== it && radio.state !== 'idle' && radio.state !== 'error') playRadio(it);   /* already listening: hop to the new station */
   deepSelect(it);
   if (it.rec) orbitDrawnAt = 0;
 }
-function onDeselect(was) { orbitDrawnAt = 0; if (was && was.layer === 'cable') showCable(null); if (was && was.layer === 'cams') camClose(); }
+function onDeselect(was) { orbitDrawnAt = 0; if (was && (was.layer === 'cable' || was.layer === 'pipe')) showCable(null); if (was && was.layer === 'cams') camClose(); }
 
 $('#tab-layers').addEventListener('change', e => {
   if (e.target.id === 'quake-window') { prefs.win = e.target.value; savePrefs(); setCountLoading('quakes'); sched.usgs.next = 0; return; }
@@ -27,6 +27,9 @@ $('#tab-layers').addEventListener('change', e => {
   if (SAT_KEYS.includes(key) && on) { ensureSatLayer(key); if ((key === 'nav' || key === 'geo') && camLL().dist < view.fit * 2) { const c = camLL(); flyTo(c.lat, c.lon, view.fit * 4.2, true); } }
   if ((key === 'radio' || key === 'sounds') && !on && radio.current && radio.current.layer === key) playRadio(null);
   if (key === 'cables') { if (on) loadCables(); if (cablesObj) cablesObj.visible = on; if (!on && selected && selected.layer === 'cable') select(null); }
+  if (ENERGY[key] && on) loadEnergy(key);
+  if (key === 'lng' && on) loadLng();
+  if (key === 'pipes') { if (on) loadPipes(); if (pipesObj) pipesObj.visible = on; if (!on && selected && selected.layer === 'pipe') select(null); }
   if (selected && selected.layer === key && !on) select(null);
   dirty.summary = dirty.feed = true;
 });
@@ -88,8 +91,8 @@ window.addEventListener('pointerup', e => {
   camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   const p = local(e), hit = pick(p.x, p.y);
   if (hit) return select(hit);
-  const g = globePoint(p.x, p.y), cab = g && cableNear(g.lat, g.lon, pixelReach(e.pointerType === 'touch' ? 9 : 4.5));
-  if (cab) { cab.lat = g.lat; cab.lon = g.lon; cab.v = ll(g.lat, g.lon, 1.002); return select(cab, { stay: true }); }      /* a cable is marked where it was clicked */
+  const g = globePoint(p.x, p.y), cab = g && lineNear(g.lat, g.lon, pixelReach(e.pointerType === 'touch' ? 9 : 4.5));
+  if (cab) { cab.lat = g.lat; cab.lon = g.lon; cab.v = ll(g.lat, g.lon, 1.002); return select(cab, { stay: true }); }      /* a cable or pipeline is marked where it was clicked */
   if (g) openPlace(g.lat, g.lon); else if (selected) select(null);
 });
 canvas.addEventListener('pointermove', e => {
@@ -100,7 +103,7 @@ canvas.addEventListener('pointermove', e => {
   requestAnimationFrame(() => {
     hoverQueued = false;
     if (!hoverXY || down) return;
-    const g = globePoint(hoverXY.x, hoverXY.y), hit = pick(hoverXY.x, hoverXY.y) || (g && cableNear(g.lat, g.lon, pixelReach(4.5)));
+    const g = globePoint(hoverXY.x, hoverXY.y), hit = pick(hoverXY.x, hoverXY.y) || (g && lineNear(g.lat, g.lon, pixelReach(4.5)));
     canvas.classList.toggle('hit', !!hit);
     cursorEl.textContent = g ? fmtLL(g.lat, g.lon) : '';
     if (hit) { tip.innerHTML = swatch(hit.layer) + '<span>' + esc(hit.title || kindOf(hit)) + '</span>'; tip.style.transform = 'translate3d(' + Math.min(hoverXY.x, view.w - 320) + 'px,' + hoverXY.y + 'px,0)'; tip.removeAttribute('data-off'); }
@@ -187,6 +190,7 @@ const BOOT = [
   { label: 'NASA satellite view', from: 'NASA', sched: 'overlay', src: 'gibs', text: () => 'ready' },
   { label: 'Live cameras', from: 'road agencies', sched: 'cams', src: 'cams', text: () => count(['cams']).toLocaleString() + ' cameras' },
   { label: 'Undersea cables', from: 'this file', run: () => loadCables(), when: () => isOn('cables'), ok: () => !!cablesObj, text: () => cables.list.length + ' cables' },
+  { label: 'Power stations and pipelines', from: 'this file', run: () => loadEnergyOn(), when: () => ENERGY_KEYS.some(isOn), ok: () => energyCount() > 0, text: () => energyCount().toLocaleString() + ' sites and pipelines' },
   { label: 'Nuclear facilities', from: 'this file', run: () => { loadNuclear(); sched.nuclear.next = Date.now() + 3000; }, when: () => layers.nuclear.on, ok: () => layers.nuclear.items.length > 0, text: () => nukeSites.length + ' power stations' }
 ];
 /* feeds whose layer is switched off are left out of the start-up list */
@@ -373,6 +377,7 @@ const FADES = [
   [() => (isOn('lights') ? 1 : 0), globeU.uLights],
   [() => (isOn('clouds') && cloudsReady ? 1 : 0), globeU.uClouds],
   [() => (over.id && over.id === over.want ? 1 : 0), globeU.uOver],
+  [() => (fine.box && over.id ? 1 : 0), globeU.uFineOn],
   [() => (isOn('aurora') && aurora.ready ? 1 : 0), aurora.u.uFade, aurora.mesh],
   [() => (isOn('wind') && wind.has() ? (view.phone ? 0.26 : 0.34) : 0), wind.obj.material.uniforms.uFade, wind.obj]
 ];
@@ -403,6 +408,7 @@ function frame(now) {
   controls.rotateSpeed = clamp(0.55 * (dist - 1) / (view.fit - 1), 0.03, 0.9);
   controls.update();
   if (tour.on) tourLook(); else trackSpin(now);
+  stepFine(now);
   const zk = view.zoomK = clamp((view.fit - dist) / (view.fit - controls.minDistance), 0, 1);
   U.uZoom.value = clamp(Math.pow(view.fit / dist, 0.4), 0.7, 1.9) * (view.phone ? 0.85 : 1);
   dotsU.uFade.value = 0.85 - 0.6 * zk;
@@ -457,12 +463,39 @@ if (location.hash === '#test') Object.assign(window.__ern, {
   },
   find: (layer, title) => { const it = (layers[layer] ? layers[layer].items : extra[layer] || []).find(x => x.title === title); if (it) select(it); return !!it; },
   cableAt: (lat, lon, px) => { const c = cableNear(lat, lon, pixelReach(px || 6)); return c ? c.title : null; },
+  pipeMid: title => { const it = pipes.list.find(x => x.title === title); if (!it) return null; const l = it.lines.reduce((a, b) => (b.length > a.length ? b : a)), q = l[l.length >> 1]; return [q[1], q[0]]; },
+  lineAt: (lat, lon, px) => { const c = lineNear(lat, lon, pixelReach(px || 6)); return c ? c.layer + ': ' + c.title : null; },
+  energy: () => { const o = { pipes: pipes.list.length, pipesShown: !!(pipesObj && pipesObj.visible) }; for (const k of Object.keys(ENERGY).concat('lng')) o[k] = layers[k].items.length; return o; },
   cableInfo: () => ({ n: cables.list.length, shown: !!(cablesObj && cablesObj.visible), hi: !!cables.hi, mid: cables.list.slice(0, 3).map(c => [c.title, c.lat, c.lon]) }),
   kinds: () => { const k = {}; for (const x of layers.nuclear.items) k[x.kind] = (k[x.kind] || 0) + 1; return JSON.stringify(k); },
   camKinds: () => { const k = {}; for (const x of layers.cams.items) { const w = x.place.split(', ').pop() + (x.live ? ' live' : x.video ? ' clip' : x.hist ? ' day' : ' still'); k[w] = (k[w] || 0) + 1; } return JSON.stringify(k); },
   camFirst: place => { const it = layers.cams.items.find(x => x.place.endsWith(place)); if (it) select(it); return it ? it.title : null; },
   camState: () => JSON.stringify({ it: !!cam.it, mode: cam.mode, state: cam.state, hls: !!cam.hls, timer: !!cam.timer }),
   look(lat, lon) { ll(lat, lon, camera.position.length(), camera.position); controls.update(); },
+  views: () => OVERLAYS.filter(o => o.id).map(o => o.id),
+  /* the colour of the globe's surface alone at each of a list of places [lat, lon], as it reaches the screen: everything else is hidden for one extra frame.
+     `bare` leaves the NASA view out as well, to give the surface underneath. */
+  probe(places, bare) {
+    for (const f of FADES) f[1].value = f[0]();                                       /* fades take a minute at two frames a second */
+    const was = [globeU.uOver.value, globeU.uFineOn.value, globeU.uPulseK.value]; globeU.uPulseK.value = 0; if (bare) globeU.uOver.value = globeU.uFineOn.value = 0;
+    const hid = scene.children.filter(o => o.visible && o !== globe); hid.forEach(o => { o.visible = false; });
+    camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    renderer.render(scene, camera);
+    const gl = renderer.getContext(), px = new Uint8Array(4), k = gl.drawingBufferHeight / view.h;
+    const out = places.map(q => {
+      const v = ll(q[0], q[1], 1); if (!project(v) || occluded(v) || scr.x < 0 || scr.y < 0 || scr.x >= view.w || scr.y >= view.h) return null;
+      gl.readPixels(Math.round(scr.x * k), Math.round((view.h - scr.y) * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); return [px[0], px[1], px[2]];
+    });
+    hid.forEach(o => { o.visible = true; }); globeU.uOver.value = was[0]; globeU.uFineOn.value = was[1]; globeU.uPulseK.value = was[2];
+    return out;
+  },
+  /* what a view's recolouring makes of one of NASA's colours */
+  tone(id, rgba) { const d = new Uint8ClampedArray(rgba), f = OVER_TONE[(overDef(id) || {}).tone]; if (f) f(d); return Array.from(d); },
+  over: () => ({ id: over.id, want: over.want, failed: over.failed || false, days: over.days, drawn: over.drawn, sharp: !!over.sharp, canvas: !!(over.tex && over.tex.image && over.tex.image.getContext), box: fine.box, fineOn: +globeU.uFineOn.value.toFixed(2), shown: +globeU.uOver.value.toFixed(2) }),
+  spin: on => setSpin(on),
+  fine: () => ({ want: fineWant(), key: fine.key, busy: fine.busy, failed: fine.failed, still: Math.round(performance.now() - fine.still), spin: controls.autoRotate, centre: globePoint(view.w / 2, view.h / 2) }),
+  /* the headless browser draws a couple of frames a second, so the glide left over from spinning would take half a minute to die away: it is run out here */
+  zoomTo(d) { zoomTarget = clamp(d, controls.minDistance, controls.maxDistance); camera.position.setLength(zoomTarget); for (let i = 0; i < 300; i++) controls.update(); },
   /* how many land dots are not sitting on the globe, worked out the way the shader does it (see DOTS_VS) */
   dots() {
     let pts = null; scene.traverse(o => { if (o.isPoints && o.material.uniforms && o.material.uniforms.uBuild === introU.build) pts = o; });

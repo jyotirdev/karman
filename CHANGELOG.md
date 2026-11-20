@@ -2,7 +2,38 @@
 
 Notable changes to Kármán. Dates are UTC.
 
-## Unreleased
+## 1.2.0 (2026-11-20)
+
+### Fixed
+
+- **Earthquakes could not be switched off.** A press on the earthquake switch landed on the hour, day or week list beside it instead. Each row in the Layers tab is a label, and a label left to itself works the first control inside it, which on that row was the list. Every row now names its own switch.
+
+### NASA satellite views
+
+- **Seven new views:** volcanic gas (sulphur dioxide), ocean plant life (chlorophyll, which shows algae blooms), ground temperature, soil moisture, vegetation, floods, and last night's city lights. The picker is grouped into Weather, Sea, Air and Land.
+- **Air pollution no longer hides the planet.** NASA paints the nitrogen dioxide measurement across every place it measured, clean air in pale yellow, so the view used to cover the globe in a grainy tan sheet. Clean air is now left uncoloured and only raised levels show, from yellow to red. Smoke, dust and haze gets the same treatment, and volcanic gas and night lights are cleared the same way. Each recolouring is written against NASA's colour table for its layer and leaves any colour it does not recognise untouched.
+- **True colour covers the whole globe.** It used to show only the passes flown so far today, with black strips everywhere else. Today's passes are now laid over the two days before.
+- **Passes are stacked.** Views made pass by pass use the latest two or three days, oldest at the bottom, so there is always a full picture under today's first passes.
+- **Honest dates.** The legend says which days the picture is from. A measurement NASA publishes late (air pollution runs about a week behind, soil moisture three days) is found by looking back through the last fortnight rather than trusting "newest", which for a satellite that has stopped means its last picture, however old.
+- **Sharper when you zoom in.** One dot of the whole-Earth picture is 20 km. Stop over an area and the same view is fetched for just that area, down to 600 m a dot, and fades in over the coarse one.
+- **Colour scales** in the legend for the views that have one.
+- **Moved off satellites that are being switched off.** Terra stops observing on 1 December 2026 and Aqua follows. Snow now comes from VIIRS on NOAA-20 (NOAA-21 as spare) instead of Terra, haze from VIIRS on both instead of the Terra and Aqua product, and sea ice from the multi-satellite MUR analysis instead of AMSR2, which stopped in September 2025 and had been showing year-old ice. Every single-satellite view has a spare that takes over if the first goes quiet.
+- **Not added:** carbon monoxide. Its only daily source in NASA's service is the AIRS instrument on Aqua, which is at the end of its life.
+
+### Energy
+
+- **The world's largest power stations**, one layer per fuel: coal, gas and oil, hydro, solar and wind. 3,362 stations, each with its output, type, age and a link to its page on Global Energy Monitor's wiki.
+- **Gas pipelines and LNG terminals:** 862 pipelines of 200 km or more, drawn and clickable like the undersea cables, and 308 terminals.
+- All of it is built into the file, from Global Energy Monitor's Global Integrated Power Tracker (April 2025) and Global Gas Infrastructure Tracker (May 2025), CC BY 4.0, cut down to the bigger ones by `tools/make-energy.py`. These layers start switched off and are only unpacked when switched on.
+
+### For contributors
+
+- The NASA view code has its own file, `src/app/81-views.js`.
+- `tools/make-energy.py` and the extracts it keeps in `data/`; `data/README.md` says how to move to a newer edition.
+- `tests/gibs-standin.js` plays NASA's image service, including its failures; `tests/smoke.js` gains `views`, `fine`, `energy` and `toggle`; `tests/tones.js` checks the recolouring without a browser.
+- The page grows from 0.99 MB to 1.36 MB (437 KB to 584 KB compressed), nearly all of it the energy map.
+
+## 1.1.0 (2026-11-20)
 
 ### Fixed
 

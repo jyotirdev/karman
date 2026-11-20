@@ -11,5 +11,11 @@ const ASSET = {
   cables: __CABLES__,
   /* Power reactors: IAEA PRIS records as compiled by GeoNuclearData 0.17.17 (March 2024). Open Database License.
      One row per site: name, latitude, longitude, country code, country, then its reactors (name, status, type, model, MW, year building began, year it started, year it closed, IAEA id). */
-  nuclear: __NUCLEAR__
+  nuclear: __NUCLEAR__,
+  /* Power stations, gas pipelines and LNG terminals: Global Energy Monitor's trackers, the larger ones only (tools/make-energy.py). CC BY 4.0.
+     plants, per fuel: name, latitude, longitude, MW running, first year, units, MW being built, country, kind, then the wiki page when it is not just the name.
+     pipes: name, state (0 running, 1 being built, 2 idle), first year, km, billion cubic metres a year, countries, routes packed like the cables', wiki page.
+     lng: name, latitude, longitude, export (1), million tonnes a year running, being built, first year, country, wiki page.
+     countries and kinds are the lists those numbers point into; ends are the usual endings of names, packed as "~" and "^". */
+  energy: __ENERGY__
 };

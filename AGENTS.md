@@ -11,9 +11,11 @@ node tools/build.js                 # src/ + assets/  ->  index.html (no depende
 node --check .build/app.check.js    # syntax check of the joined program
 python3 -m http.server 8080         # serve locally at http://localhost:8080
 python3 tools/make-data.py          # rebuild assets/cables.json and assets/nuclear.json from data/
+python3 tools/make-energy.py        # rebuild assets/energy.json from the extracts in data/ (add --from DIR to start again from Global Energy Monitor's files)
 python3 tools/fill-pole.py          # only after replacing assets/surf.jpg or assets/land.b64: fills the South Pole again
 
 npm install && npx playwright install chromium   # once, for tests only
+node tests/tones.js                 # NASA view recolouring against NASA's colour tables; no browser needed
 node tests/smoke.js ok quake        # expect "errors: none"
 node tests/smoke.js offline boot
 ```
@@ -58,13 +60,14 @@ node tests/smoke.js offline boot
 | `src/app/10-scene.js` | three.js scene, shaders, markers, lines, picking |
 | `src/app/30-ui.js` | `SOURCES`, selection, detail cards (`DETAILS`), guide |
 | `src/app/40` … `85` | Feed loaders, one file per family |
-| `src/app/82-infra.js`, `83-cams.js` | Cables and nuclear sites; live cameras |
+| `src/app/81-views.js` | The NASA satellite views: which days to fetch, fallbacks, the recolouring (`OVER_TONE`), the legend and the sharper zoom window. The list of views is `OVERLAYS` in `00-core.js` |
+| `src/app/82-infra.js`, `83-cams.js`, `84-energy.js` | Cables and nuclear sites; live cameras; power stations, gas pipelines and LNG terminals |
 | `src/app/86-open.js`, `87-music.js`, `88-tour.js` | Opening sequence, tour music, tour mode |
 | `src/app/90-main.js` | Wiring, scheduler (`sched`), start-up steps (`BOOT`), frame loop |
 | `src/index.html` (`#wm`), `docs/brand/` | The wordmark, drawn as outlines and reused wherever the name appears; the mark, icon and banner |
 | `assets/`, `data/` | Embedded map data, and the raw files it is built from |
-| `tools/` | `build.js` (the build), `make-data.py` (cables and reactors), `landmask.js` and `fill-pole.py` (the land dots and the South Pole) |
-| `tests/smoke.js` | Headless tests with stand-in feeds |
+| `tools/` | `build.js` (the build), `make-data.py` (cables and reactors), `make-energy.py` (power stations and pipelines), `landmask.js` and `fill-pole.py` (the land dots and the South Pole) |
+| `tests/smoke.js`, `tests/gibs-standin.js`, `tests/tones.js` | Headless tests with stand-in feeds; the stand-in for NASA's image service; the recolouring check |
 
 Adding a layer is described step by step in `CONTRIBUTING.md`.
 

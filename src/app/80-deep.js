@@ -8,7 +8,7 @@ Object.assign(SOURCES, {
   socrates: { label: 'CelesTrak SOCRATES', what: 'Predicted close passes between objects in orbit over the coming week', url: 'https://celestrak.org/SOCRATES/' },
   satcat:   { label: 'CelesTrak SATCAT', what: 'The catalogue record (owner, launch date and site) for the object you select', url: 'https://celestrak.org/satcat/search.php', lazy: true },
   isounds:  { label: 'iNaturalist sounds', what: 'Newly identified wildlife sound recordings', url: 'https://www.inaturalist.org/observations?sounds' },
-  gibs:     { label: 'NASA GIBS', what: 'Whole-Earth satellite views: rain, sea temperature, snow and ice, haze, air pollution, true colour', url: 'https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api', lazy: true },
+  gibs:     { label: 'NASA GIBS', what: 'Whole-Earth satellite views: rain, snow and ice, true colour, sea temperature and algae, haze, air pollution and volcanic gas, ground temperature, soil moisture, vegetation, floods and night lights', url: 'https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api', lazy: true },
   co2:      { label: 'global-warming.org', what: 'Daily global carbon dioxide level, from NOAA’s Global Monitoring Laboratory', url: 'https://global-warming.org/' },
   cams:     { label: 'Road cameras', what: 'Live video from Caltrans highway cameras, clips from Transport for London JamCams, and pictures from Fintraffic road weather cameras and Singapore LTA traffic cameras', url: 'https://www.digitraffic.fi/en/road-traffic/', lazy: true },
   commons:  { label: 'Wikimedia Commons', what: 'Photos taken near the place you select', url: 'https://commons.wikimedia.org/', lazy: true }
@@ -316,40 +316,6 @@ DETAILS.sounds = it => ({
 });
 
 /* ============================================================
-   NASA satellite views draped over the globe (GIBS). One picture of the whole Earth per view, newest available.
-   ============================================================ */
-const over = { id: '', want: '', tex: null };
-function paintLegend() {
-  const el = $('#legend'), def = OVERLAYS.find(o => o[0] === over.want && o[0]);
-  el.hidden = !def;
-  if (def) el.innerHTML = '<span class="lg-text"><b>' + def[1] + (over.id === over.want ? '' : over.failed ? ' could not be loaded' : ' <i class="spin"></i>') + '</b><span>' + (over.failed ? 'NASA’s image service did not answer. Pick the view again to retry.' : def[4]) +
-    '</span><small>NASA GIBS, latest available pass</small></span><button class="icon-btn" data-act="overlay-off" aria-label="Turn this view off" title="Turn this view off"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button>';
-}
-function setOverlay(id, refresh) {
-  id = OVERLAYS.some(o => o[0] === id) ? id : '';
-  const def = OVERLAYS.find(o => o[0] === id);
-  prefs.overlay = id; savePrefs(); over.want = id; over.failed = false;
-  const pick = $('#overlay-pick'); if (pick && pick.value !== id) { pick.value = id; pick.closest('.layer').classList.toggle('off', !id); }
-  if (!id) { over.id = ''; setCount('overlay', ''); setStatus('gibs', 'off'); return paintLegend(); }
-  if (refresh && over.id === id) over.keep = true; else over.id = '';
-  paintLegend(); setStatus('gibs', 'load');
-  const el = $('#count-overlay'); if (el) el.innerHTML = '<i class="spin"></i>';
-  try { sched.overlay.next = Date.now() + sched.overlay.every; } catch (e) {}
-  const url = 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=' + def[2] + '&STYLES=&FORMAT=image/' + def[3] + '&TRANSPARENT=TRUE&SRS=EPSG:4326&BBOX=-180,-90,180,90&WIDTH=2048&HEIGHT=1024&_=' + Math.floor(Date.now() / 1800000);
-  return loadImage(url, true).then(im => {
-    if (over.want !== id) return;
-    const t = tuneTexture(new THREE.Texture(im)), old = over.tex;
-    over.tex = t; globeU.tOver.value = t; over.id = id;
-    if (old) setTimeout(() => old.dispose(), 1500);
-    setCount('overlay', ''); setStatus('gibs', 'ok'); paintLegend();
-  }).catch(() => {
-    if (over.want !== id) return;
-    if (!over.keep) { over.id = ''; over.failed = true; }
-    setCount('overlay', over.keep ? '' : '–'); setStatus('gibs', 'err', 'the image did not load'); paintLegend();
-  }).then(() => { over.keep = false; });
-}
-
-/* ============================================================
    Carbon dioxide, meteor showers, and the extra "Right now" rows
    ============================================================ */
 async function loadCO2() {
@@ -471,4 +437,4 @@ $('#tab-guide').insertAdjacentHTML('beforeend', '<h3>Reading the orbit</h3><ul c
   '<li>The lower an object flies, the sooner thin air drags it down. Below about 400 km that takes months; above 1,000 km it takes centuries.</li></ul>' +
   '<h3>Listening</h3><ul class="how"><li><b>Radio stations</b> play live. Press the scan button in the player to hop to a new station every 24 seconds.</li>' +
   '<li><b>Wild sounds</b> are short recordings of animals, made in the last few days at the spot marked.</li></ul>' +
-  '<h3>NASA satellite views</h3><ul class="how"><li>In the Layers tab, under Map, pick a view to colour the globe with a real measurement: ' + OVERLAYS.slice(1).map(o => o[1].toLowerCase()).join(', ') + '. A note at the top explains the colours.</li></ul>');
+  '<h3>NASA satellite views</h3><ul class="how"><li>In the Layers tab, under Map, pick a view to colour the globe with a real measurement: ' + OVERLAYS.slice(1).map(o => o.name.toLowerCase()).join(', ') + '. A note at the top explains the colours and says which days the picture is from.</li><li>Zoom in and stop: after a moment the picture sharpens for the area on screen.</li></ul>');

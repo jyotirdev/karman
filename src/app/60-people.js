@@ -398,7 +398,7 @@ liveFns.push(o => {
     if (state.loading) h += '<div class="skel-row">' + SK(150) + SK(100) + '</div><div class="skel-row">' + SK(120) + SK(140) + '</div>';
     if (state.sats.length) { h += '<h3>In orbit</h3>'; for (const r of state.sats) h += opt(r, i++); }
     if (state.radio.length) { h += '<h3>Radio stations</h3>'; for (const r of state.radio) h += opt(r, i++); }
-    if (state.infra.length) { h += '<h3>Nuclear sites and cables</h3>'; for (const r of state.infra) h += opt(r, i++); }
+    if (state.infra.length) { h += '<h3>Power, pipelines and cables</h3>'; for (const r of state.infra) h += opt(r, i++); }
     if (state.failed && !flat.length) h += '<p class="empty">The place search could not be reached. Try again in a moment.</p>';
     else if (state.q && !state.loading && !flat.length) h += '<p class="empty">Nothing by that name. Try a city, a country, a satellite or a radio station.</p>';
     if (!state.q) h += '<p class="hint">Type a city, a country, a satellite or a radio station.</p>';
@@ -414,6 +414,8 @@ liveFns.push(o => {
     state.infra = [];
     if (ql.length >= 3) {
       if (layers.nuclear.on) for (const x of layers.nuclear.items) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: [x.kind, x.country].filter(Boolean).join(', '), item: x, sw: 'nuclear' }); if (state.infra.length >= 3) break; } }
+      for (const key of Object.keys(ENERGY).concat('lng')) if (layers[key].on && state.infra.length < 5) { let n = 0; for (const x of layers[key].items) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: x.kind + ', ' + x.country, item: x, sw: key }); if (++n >= 2) break; } } }
+      if (isOn('pipes')) { let n = 0; for (const x of pipes.list) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: 'Gas pipeline, ' + num(x.km) + ' km', item: x, sw: 'pipes' }); if (++n >= 2) break; } } }
       if (isOn('cables')) { let n = 0; for (const x of cables.list) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: 'Undersea cable' + (x.year ? ', ' + (x.planned ? 'planned for ' : 'since ') + x.year : ''), item: x, sw: 'cables' }); if (++n >= 3) break; } } }
     }
     if (ql.length >= 2) for (const key of ['stations'].concat(SAT_KEYS)) {

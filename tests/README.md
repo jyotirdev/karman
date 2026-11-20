@@ -38,9 +38,27 @@ Each run ends with a line such as `desktop ok quake errors: none`. Screenshots a
 | `quake`, `iss`, `sat`, `orbit`, `launch`, `news`, `radio` | Selecting one item of that kind |
 | `place`, `search` | The card for any place, and the search box |
 | `nuclear`, `cable`, `camlive`, `infra` | Nuclear sites, undersea cables, the camera viewer, and the infrastructure group |
-| `zoom`, `overlay` | Zooming, and NASA satellite views |
+| `toggle` | Layer switches worked with a real pointer: a press on the switch or the name flips it, and on the earthquake row the hour, day or week list neither steals the press nor flips the switch |
+| `energy` | Power stations, LNG terminals and gas pipelines: off at first, unpacked when switched on, their cards, a pipeline under the pointer, search, and off again |
+| `zoom`, `overlay` | Zooming, and one NASA satellite view |
+| `views` | Every NASA view in turn (or the ones in `VIEW=a,b`): which layers and days it was built from, how many pictures it took, what the legend says, and a colour check: at a few places, is the colour on the globe the colour that was sent, after the page's recolouring? |
+| `fine` | The sharper window: zooms in on `LOOK=lat,lon` through the distances in `DIST` and reports the window fetched at each. With `GIBS_GRID=1` it also measures where ruled lines land on the globe, which must be within one dot of the picture |
 | `south` | The far south and the South Pole, and a count of land dots that are not sitting on the globe (it must be none) |
 
 `DPR=3` renders at three times the pixel density, for looking closely at small things.
+
+### NASA's image service
+
+`tests/gibs-standin.js` answers the page's requests the way NASA GIBS does for the layers it uses: the area and day asked for, NASA's real colours, each layer's real publishing delay, an empty picture for a day with nothing, and an error for a layer it does not know. These make it misbehave:
+
+| Setting | What it plays |
+|---|---|
+| `GIBS=down` | The service does not answer at all |
+| `GIBS=stale` | Every layer is listed but has had nothing new for weeks |
+| `GIBS_QUIET=layer,layer` | Those layers have had nothing new for weeks, so their spares should take over |
+| `GIBS_GONE=layer,layer` | Those layers have been withdrawn, so a request naming them fails outright |
+| `GIBS_GRID=1` | A line is ruled along every 15th meridian and parallel, for the `fine` test |
+
+`node tests/tones.js` needs no browser: it runs the page's recolouring functions over the colours NASA uses for known amounts and fails if an amount that should be cleared is kept, or the other way round.
 
 What these tests cannot show: real data, real video streams, sound, and motion at full frame rate. Check those in a browser.

@@ -9,6 +9,22 @@ const sharp = require('sharp');
 const fs = require('fs'), path = require('path');
 const OUT = path.join(__dirname, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const nm = p => fs.readFileSync(path.join(__dirname, '..', 'node_modules', p));
+const gibs = require('./gibs-standin.js');          /* NASA's image service: GIBS=down|stale, GIBS_GONE=<layer,...>, GIBS_QUIET=<layer,...>, GIBS_GRID=1, GIBS_WAIT=<ms> */
+const list = v => (v || '').split(',').filter(Boolean);
+/* choose a NASA view the way the picker does (on a phone the picker sits in a tab that may not be open) */
+const pickView = (page, id) => page.evaluate(id => { const el = document.querySelector('#overlay-pick'); el.value = id; el.dispatchEvent(new Event('change', { bubbles: true })); }, id);
+/* places where the stand-in is known to send something particular, for the colour check: [what, lat, lon] */
+const SPOTS = {
+  no2: [['clean air over the ocean', -22, 78], ['the middle of a polluted city', 28.6, 77.2], ['its outskirts', 28.6, 80.2], ['its far edge', 28.6, 81.6]],
+  haze: [['the middle of a smoke plume', 58, 110], ['clear air', -30, 60], ['its edge', 44, 100]],
+  so2: [['the middle of a gas plume', -7.5, 110.4], ['part way out', -7.5, 104], ['no gas', 12, 62]],
+  night: [['a city centre', 19, 72.9], ['dark ocean', -22, 78], ['the edge of a city', 19, 74.2]],
+  snow: [['open sea', -10, 75], ['pack ice', 73.2, 40], ['snow on land', 62, 95]],
+  flood: [['a flood', 24.5, 90.5]],
+  sst: [['tropical sea', -5, 75], ['cold sea', -48, 75]], chl: [['open ocean', -22, 78]], lst: [['a continent', 22, 78]], soil: [['a continent', 22, 78]], ndvi: [['a continent', 22, 78]],
+  true: [['open ocean', -22, 78], ['land', 22, 78]]
+};
+const GIBS = { down: process.env.GIBS === 'down', stale: process.env.GIBS === 'stale', gone: list(process.env.GIBS_GONE), quiet: list(process.env.GIBS_QUIET), grid: !!process.env.GIBS_GRID };
 const now = Date.now();
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const belts = [[35,-118],[61,-150],[19,-155],[36,139],[-6,128],[-20,-70],[38,27],[-18,-175],[28,84],[45,150],[13,-90]];
@@ -117,8 +133,6 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
 
 (async () => {
   const cloudJpg = await sharp(Buffer.from(Array.from({ length: 128 * 64 }, () => (rnd() < 0.3 ? 255 : 0))), { raw: { width: 128, height: 64, channels: 1 } }).blur(3.2).resize(1024, 512, { kernel: 'cubic' }).jpeg({ quality: 70 }).toBuffer();
-  const overRaw = Buffer.alloc(256 * 128 * 4); for (let y = 0; y < 128; y++) for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4, v = Math.sin(x / 13) * Math.cos(y / 9); overRaw[o] = v > 0.55 ? 230 : 40; overRaw[o + 1] = v > 0.3 ? 200 : 90; overRaw[o + 2] = v > 0.55 ? 40 : 200; overRaw[o + 3] = v > 0.3 ? 235 : 0; }
-  const overPng = await sharp(overRaw, { raw: { width: 256, height: 128, channels: 4 } }).png().toBuffer();
   const ctLog = []; let refuse = true;
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const mode = process.argv[2] || 'ok', action = process.argv[3] || '';
@@ -128,7 +142,7 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
     if (process.env.VW && name === 'desktop') { vp.width = +process.env.VW; vp.height = +process.env.VH || vp.height; }
     const page = await browser.newPage({ viewport: vp, deviceScaleFactor: +process.env.DPR || (name === 'phone' ? 2 : 1) });
     if (process.env.WARM_NOGESTURE) await page.addInitScript(() => { Object.defineProperty(navigator, 'userActivation', { get: () => ({ hasBeenActive: !!window.__gesture, isActive: false }) }); });      /* a visitor who has not clicked or pressed anything yet */
-    const errors = [], unknown = new Set(); let satLib = 0;
+    const errors = [], unknown = new Set(), gibsLog = []; let satLib = 0;
     page.on('requestfailed', r => { if (process.env.NETLOG && !/fonts/.test(r.url())) console.log('FAILED', r.url().slice(0, 90)); });
     page.on('requestfinished', r => { if (process.env.NETLOG && /met\.no|open-meteo\.com\/v1\/forecast\?latitude=19/.test(r.url())) console.log('OK', r.url().slice(0, 90)); });
     page.on('pageerror', e => errors.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
@@ -188,7 +202,7 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
         if (mode === 'nocors') return route.abort();                    /* this mode exercises the two-line fallback */
         return text(toCsv(body));
       }
-      if (h === 'gibs.earthdata.nasa.gov') return setTimeout(() => route.fulfill({ contentType: 'image/png', headers: cors, body: overPng }), 1200);
+      if (h === 'gibs.earthdata.nasa.gov') return GIBS.down ? route.abort() : gibs.answer(u, GIBS, gibsLog).then(r => setTimeout(() => route.fulfill({ contentType: r.contentType, headers: cors, body: r.body }), +process.env.GIBS_WAIT || 250), () => route.abort());
       if (h === 's3-eu-west-1.amazonaws.com' && /\.mp4/.test(u)) return process.env.NOCLIP ? route.abort() : route.fulfill({ contentType: 'video/webm', headers: cors, body: fs.readFileSync(path.join(__dirname, 'clip.webm')) });
       if (h === 'wzmedia.dot.ca.gov') return process.env.HLS_OK ? route.fulfill({ contentType: 'application/vnd.apple.mpegurl', headers: cors, body: '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:4.0,\nseg1.ts\n' }) : route.abort();
       if (h === 'caltrans-gis.dot.ca.gov') { if (mode === 'nocors') return route.abort(); const off = +q.get('resultOffset') || 0, all = Array.from({ length: 2600 }, (_, i) => ({ attributes: { locationName: 'I-' + (5 + i % 90) + ' : At Test Street ' + i + ' - Looking North (C' + String(i).padStart(3, '0') + ')', nearbyPlace: ['Los Angeles', 'Sacramento', 'San Diego', 'Oakland'][i % 4], county: 'Test', longitude: -122.4 + (i % 53) / 53 * 5.2, latitude: 32.7 + (i % 47) / 47 * 6.6, direction: 'North', inService: i % 40 ? 'True' : 'False',
@@ -281,6 +295,128 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
       if (action === 'sound') { await page.click('#detail .row[data-sel^="sounds"] >> nth=0'); await page.waitForTimeout(1500); await page.click('#radio-play'); await page.waitForTimeout(600); const a = await page.evaluate(() => document.querySelector('#player').dataset.state + ' / ' + document.querySelector('#radio-play').textContent); await page.waitForTimeout(3000);
         console.log('  sound:', a, '->', await page.evaluate(() => document.querySelector('#player').dataset.state + ' / ' + document.querySelector('#radio-play').textContent + ' / ' + document.querySelector('#pl-state').textContent)); } }
     if (action === 'co2') { await page.click(side + ' [data-open="co2"]'); await page.waitForTimeout(700); }
+    if (action === 'toggle') {
+      /* Layer switches worked with a real pointer, the way a visitor does. The earthquake row also holds a list (hour, day, week): a press on its
+         switch must turn earthquakes off, not open the list, and choosing from the list must not flip the switch. */
+      const state = k => page.evaluate(k => ({ checked: document.querySelector('#layer-' + k).checked, row: document.querySelector('[data-layer="' + k + '"]').classList.contains('off') ? 'off' : 'on', focus: (document.activeElement || {}).id || '', win: (document.querySelector('#quake-window') || {}).value }), k);
+      const ok = (what, cond, got) => { console.log('  ' + (cond ? 'ok   ' : 'WRONG') + ' ' + what + (cond ? '' : ' -> ' + JSON.stringify(got))); if (!cond) errors.push(what); };
+      if (name === 'phone') { await page.click('.tabs [data-tab="layers"], [data-tab="layers"]'); await page.waitForTimeout(600); }
+      for (const k of ['quakes', 'fires', 'nuclear']) {
+        const sw = page.locator('[data-layer="' + k + '"] .switch'); await sw.scrollIntoViewIfNeeded();
+        const before = await state(k); await sw.click(); await page.waitForTimeout(500); const off = await state(k);
+        ok(k + ': a press on the switch turns it ' + (before.checked ? 'off' : 'on'), off.checked === !before.checked && off.row === (before.checked ? 'off' : 'on') && off.focus !== 'quake-window', off);
+        await page.locator('[data-layer="' + k + '"] .name').click(); await page.waitForTimeout(500); const back = await state(k);
+        ok(k + ': a press on its name turns it back', back.checked === before.checked, back);
+      }
+      const q0 = await state('quakes');
+      await page.selectOption('#quake-window', 'week'); await page.waitForTimeout(800); const q1 = await state('quakes');
+      ok('choosing "week" changes the list and leaves the switch alone', q1.win === 'week' && q1.checked === q0.checked, q1);
+      await page.locator('#quake-window').click(); await page.waitForTimeout(300); await page.keyboard.press('Escape'); const q2 = await state('quakes');
+      ok('a press on the list itself does not flip the switch', q2.checked === q0.checked, q2);
+      await page.selectOption('#quake-window', q0.win);
+      ok('the NASA view row has no switch to mislabel', await page.evaluate(() => !document.querySelector('[data-layer="overlay"]').hasAttribute('for')), '');
+      const loose = await page.evaluate(() => [...document.querySelectorAll('label.layer')].filter(l => l.querySelector('input[type=checkbox]') && l.htmlFor !== l.querySelector('input[type=checkbox]').id).map(l => l.dataset.layer));
+      ok('every row with a switch is a label for that switch', loose.length === 0, loose);
+      console.log(name, 'toggle errors:', errors.length ? errors.join('\n') : 'none'); await page.close(); continue;
+    }
+    if (action === 'energy') {
+      /* power stations, LNG terminals and gas pipelines: off to begin with, unpacked when switched on, findable, clickable, and gone again when switched off */
+      const info = () => page.evaluate(() => window.__ern.energy()), card = () => page.evaluate(() => { const d = document.querySelector('#detail'); return (d.querySelector('.big') || {}).textContent + ' || ' + (d.querySelector('.big + p') || {}).textContent + ' || ' + [...d.querySelectorAll('.kv > div')].map(x => x.textContent).join(' | ') + ' || ' + [...d.querySelectorAll('a')].map(a => a.getAttribute('href')).filter(h => /gem\.wiki/.test(h)).join(' '); });
+      console.log('  at first:', JSON.stringify(await info()));
+      await page.evaluate(() => window.__ern.spin(false));
+      if (name === 'phone') await page.click('[data-tab="layers"]').catch(() => {});
+      for (const k of ['coal', 'gas', 'hydro', 'solar', 'wind', 'lng', 'pipes']) await page.evaluate(k => document.querySelector('#layer-' + k).click(), k);
+      await page.waitForTimeout(4000);
+      console.log('  all on:  ', JSON.stringify(await info()), '| counts shown:', await page.evaluate(() => ['coal', 'gas', 'hydro', 'solar', 'wind', 'lng', 'pipes'].map(k => (document.querySelector('#count-' + k) || {}).textContent).join(' ')));
+      await page.evaluate(() => window.__ern.look(30, 105)); await page.waitForTimeout(2500); await page.screenshot({ path: `${OUT}/shot-${name}-energy-asia.png` });
+      for (const [layer, title] of [['hydro', 'Three Gorges Dam hydroelectric plant'], ['coal', 'Taichung power station'], ['wind', 'Hornsea wind farm'], ['solar', 'Bhadla III Solar Park'], ['gas', 'Surgut GRES-2 power station'], ['lng', 'Sabine Pass LNG Terminal'], ['pipe', 'Nord Stream Gas Pipeline']]) {
+        const ok = await page.evaluate(v => window.__ern.find(v[0], v[1]), [layer, title]); await page.waitForTimeout(1200);
+        console.log('  ' + layer.padEnd(5), ok ? await card() : 'NOT FOUND: ' + title);
+        if (!ok) errors.push('not found: ' + title);
+        if (layer === 'hydro' || layer === 'pipe') await page.screenshot({ path: `${OUT}/shot-${name}-energy-${layer}.png` });
+      }
+      /* a pipeline is found under the pointer along its drawn route, and not far from it */
+      const mid = await page.evaluate(() => { const it = window.__ern.pipeMid('Yamal-Europe Gas Pipeline'); return it; });
+      if (mid) console.log('  under the pointer on the Yamal-Europe route:', await page.evaluate(m => window.__ern.lineAt(m[0], m[1], 6), mid), '| 3 degrees north of it:', await page.evaluate(m => window.__ern.lineAt(m[0] + 3, m[1], 6), mid));
+      else errors.push('no Yamal-Europe pipeline');
+      const box = await page.$('#search-input, #search input, input[type="search"]');
+      if (box) { await box.click(); await box.type('nord stream', { delay: 30 }); await page.waitForTimeout(1800); console.log('  search "nord stream":', await page.evaluate(() => [...document.querySelectorAll('#search-results .row, .results .row, [role="option"]')].slice(0, 6).map(r => r.textContent.trim().replace(/\s+/g, ' ').slice(0, 60)).join(' ; '))); await page.screenshot({ path: `${OUT}/shot-${name}-energy-search.png` }); await page.keyboard.press('Escape'); }
+      for (const k of ['coal', 'gas', 'hydro', 'solar', 'wind', 'lng', 'pipes']) await page.evaluate(k => document.querySelector('#layer-' + k).click(), k);
+      await page.waitForTimeout(1500);
+      console.log('  all off: ', JSON.stringify(await info()), '| selected card still open:', await page.evaluate(() => !!document.querySelector('#detail .big')));
+      console.log(name, 'energy errors:', errors.length ? errors.join('\n') : 'none'); await page.close(); continue;
+    }
+    if (action === 'views') {
+      /* every NASA view in turn: does it load, from which layers and days, with how many requests, and what does the legend say */
+      const settled = () => page.waitForFunction(() => { const o = window.__ern.over(); return o.want && (o.id === o.want || o.failed); }, null, { timeout: 120000 }).catch(() => errors.push('a view never settled'));
+      const ids = (process.env.VIEW ? process.env.VIEW.split(',') : await page.evaluate(() => window.__ern.views()));
+      await page.evaluate(() => window.__ern.spin(false));
+      if (process.env.LOOK) await page.evaluate(v => window.__ern.look(+v[0], +v[1]), process.env.LOOK.split(','));
+      for (const id of ids) {
+        gibsLog.length = 0; const t0 = Date.now();
+        await pickView(page, id); await settled(); await page.waitForTimeout(1800);
+        const o = await page.evaluate(() => window.__ern.over()), full = gibsLog.filter(r => r.w > 64), thumbs = gibsLog.length - full.length;
+        console.log('  ' + id.padEnd(6), o.failed ? 'FAILED (' + o.failed + ')' : 'on', '| ' + ((Date.now() - t0 - 1800) / 1000).toFixed(1) + ' s | pictures ' + full.length + (thumbs ? ' + ' + thumbs + ' thumbnails' : '') + ' | ' + (o.canvas ? 'combined' : 'as sent') +
+          ' | days ' + (o.days.join(' ') || '(newest)') + '\n         from ' + o.drawn.map(d => d.layers + (d.days.filter(Boolean).length ? ' x' + d.days.length : '')).join(' + ') + '\n         legend: ' + (await page.evaluate(() => { const l = document.querySelector('#legend'); return l.querySelector('b').textContent.trim() + ' / ' + l.querySelector('small').textContent + ' / scale ' + (l.querySelector('.lg-bar') ? 'bar ' + [...l.querySelectorAll('.lg-bar em')].map(e => e.textContent).join('..') : l.querySelector('.lg-keys') ? 'keys ' + l.querySelectorAll('.lg-keys em').length : 'none'); })));
+        await page.screenshot({ path: `${OUT}/shot-${name}-view-${id}.png` });
+        /* End to end: at a few places, is the colour on the globe the colour NASA sent, after the page's recolouring, mixed in the way the shader
+           says it mixes (seven-eighths of the picture, dimmed on the night side)? The stand-in knows what it sent, so the answer can be worked out. */
+        if (!o.failed && !GIBS.grid && SPOTS[id]) {
+          const bad = [];
+          for (const [what, lat, lon] of SPOTS[id]) {
+            const raw = gibs.shown(o.drawn, lon, lat, GIBS), on = (await page.evaluate(v => window.__ern.probe([v], false), [lat, lon]))[0], off = (await page.evaluate(v => window.__ern.probe([v], true), [lat, lon]))[0];
+            if (!on || !off) { bad.push(what + ': not in view'); continue; }
+            const t = raw ? await page.evaluate(v => window.__ern.tone(v[0], v[1]), [id, raw]) : [0, 0, 0, 0], a = t[3] / 255 * 0.88, c = t.indexOf(Math.max(t[0], t[1], t[2]));
+            if (a < 0.02) { if (Math.max(...on.map((v, i) => Math.abs(v - off[i]))) > 3) bad.push(what + ': should be clear, drawn ' + on + ' over ' + off); continue; }
+            const K = (on[c] - off[c] * (1 - a)) / (a * t[c]), want = [0, 1, 2].map(i => off[i] * (1 - a) + a * K * t[i]), miss = Math.max(...want.map((v, i) => Math.abs(v - on[i])));
+            if (!(K > 0.56 && K < 0.99) || miss > 7) bad.push(what + ': sent ' + raw.slice(0, 3).map(Math.round) + ', recoloured ' + t.map(Math.round) + ', drawn ' + on + ' over ' + off + ', light ' + K.toFixed(2) + ', off by ' + miss.toFixed(0));
+          }
+          console.log('         colour check at ' + SPOTS[id].length + ' places: ' + (bad.length ? 'WRONG\n           ' + bad.join('\n           ') : 'right'));
+          if (bad.length) errors.push('colours wrong in ' + id);
+        }
+      }
+      console.log(name, 'views errors:', errors.length ? errors.join('\n') : 'none'); await page.close(); continue;
+    }
+    if (action === 'fine') {
+      /* the sharper window: zoom in on a place in steps and watch a window of the right size arrive, line up and fade in */
+      const id = process.env.VIEW || 'chl', at = (process.env.LOOK || '12,-28').split(',').map(Number);
+      await page.evaluate(() => window.__ern.spin(false));
+      await pickView(page, id);
+      await page.waitForFunction(() => { const o = window.__ern.over(); return o.id === o.want || o.failed; }, null, { timeout: 120000 }).catch(() => errors.push('the view never settled'));
+      await page.evaluate(v => window.__ern.look(v[0], v[1]), at);
+      for (const d of (process.env.DIST || '2.6,1.9,1.5,1.3,1.18,1.13,2.2,5').split(',').map(Number)) {
+        gibsLog.length = 0;
+        await page.evaluate(d => window.__ern.zoomTo(d), d);
+        await page.waitForTimeout(+process.env.FINE_WAIT || 9000);
+        const o = await page.evaluate(() => window.__ern.over());
+        console.log('  dist ' + String(d).padEnd(5), '| window', o.box ? o.box.join(',') + ' (' + (o.box[2] - o.box[0]) + '° wide)' : 'none', '| shown', o.fineOn, '| asked', gibsLog.length ? gibsLog.map(r => r.box + (r.time ? ' ' + r.time.slice(5) : '')).join(' ; ') : 'nothing', '| legend:', await page.evaluate(() => document.querySelector('#legend small').textContent));
+        await page.screenshot({ path: `${OUT}/shot-${name}-fine-${id}-${d}.png` });
+        /* With GIBS_GRID=1 the stand-in rules a line along every 15th meridian and parallel. Where on the globe does the page draw them?
+           Each is searched for across two degrees; the answer should be the line's own longitude or latitude to within one dot of the picture. */
+        if (GIBS.grid) {
+          const box = o.box || [-180, -90, 180, 90], dot = (box[2] - box[0]) / 2048, mid = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2], out = [];
+          const lon15 = Math.round(at[1] / 15) * 15, lat15 = Math.round(at[0] / 15) * 15, offLine = v => v + (Math.abs(v - Math.round(v / 15) * 15) < 1.5 ? 2.5 : 0);
+          for (const [axis, line, other, lo, hi] of [['meridian', lon15, offLine(at[0]), box[0], box[2]], ['parallel', lat15, offLine(at[1]), box[1], box[3]]]) {
+            if (line - 1 < lo || line + 1 > hi) continue;
+            let best = -1e9, where = null, seen = 0; const all = [];
+            const vs = Array.from({ length: 201 }, (_, k) => line + (k - 100) * 0.01), cs = await page.evaluate(q => window.__ern.probe(q, false), vs.map(v => (axis === 'meridian' ? [other, v] : [v, other])));
+            for (let k = 0; k < vs.length; k++) {
+              const v = vs[k], c = cs[k];
+              if (!c) continue; seen++;
+              const score = c[0] + c[2] - 2 * c[1]; all.push(score); if (score > best + 0.5) { best = score; where = [v, v]; } else if (Math.abs(score - best) <= 0.5 && where) where[1] = v;
+            }
+            if (seen < 150) { out.push(axis + ' ' + line + '° is off the screen here'); continue; }
+            const usual = all.slice().sort((p, q) => p - q)[all.length >> 1];          /* a thin line is half blended into the ground beside it, so it is judged against that ground */
+            if (best - usual < 80) { out.push(axis + ' ' + line + '° NOT DRAWN (stands out by ' + (best - usual) + ' over ' + seen + ' samples)'); errors.push('no ' + axis + ' at ' + line + '° at distance ' + d); continue; }
+            const found = (where[0] + where[1]) / 2, err = Math.abs(found - line);
+            out.push(axis + ' ' + line + '° drawn at ' + found.toFixed(3) + '° (off by ' + (err / dot).toFixed(2) + ' dots of ' + (dot * 111).toFixed(1) + ' km)');
+            if (!(err <= dot * 1.01)) errors.push('the ' + axis + ' at ' + line + '° is drawn ' + (err / dot).toFixed(2) + ' dots away at distance ' + d);
+          }
+          console.log('         lines: ' + (out.join(' | ') || 'none inside this window'));
+        }
+      }
+      console.log(name, 'fine errors:', errors.length ? errors.join('\n') : 'none'); await page.close(); continue;
+    }
     if (action === 'overlay') { await page.selectOption('#overlay-pick', 'sst'); await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-overlay-loading.png` }); await page.waitForTimeout(4000); console.log('  legend:', await page.evaluate(() => document.querySelector('#legend').textContent.slice(0, 90))); }
     if (action === 'cam' || action === 'train' || action === 'cables') { const k = action === 'cam' ? 'cams' : action === 'train' ? 'trains' : 'cables'; await page.evaluate(k => document.querySelector('#layer-' + k).click(), k); await page.waitForTimeout(5000);
       if (action !== 'cables') { await page.evaluate(k => window.__ern.pick(k, k === 'cams' ? 400 : 90), k); await page.waitForTimeout(3000); console.log('  ' + action + ':', await page.evaluate(() => document.querySelector('#detail .big').textContent + ' || ' + [...document.querySelectorAll('#detail .kv > div')].map(d => d.textContent).join(' | '))); } }

@@ -457,6 +457,7 @@ function renderFeed() {
   $('#tab-latest').innerHTML = '<p class="hint">Earthquakes of magnitude 2.5 and up, natural events, alerts and space weather, newest first.</p>' + h;
   markSelectedRows();
 }
+const overOption = o => '<option value="' + o.id + '"' + ((prefs.overlay || '') === o.id ? ' selected' : '') + '>' + o.name + '</option>';
 function renderNews() {
   const items = newsAll;
   let h = '<p class="hint">Stories from Wikipedia’s Current events portal. Each one is pinned to the first place it mentions.</p>', day = '';
@@ -478,11 +479,12 @@ function renderNews() {
     h += '<section class="grp"><h3>' + g[1] + '</h3><div class="card">';
     for (const key of Object.keys(LAYERS)) {
       const L = LAYERS[key]; if (L.g !== g[0]) continue;
-      h += '<label class="layer' + (L.pick ? (prefs.overlay ? '' : ' off') : isOn(key) ? '' : ' off') + '" data-layer="' + key + '"' + (key === 'other' ? ' hidden' : '') + (L.about ? ' title="' + esc(L.about) + '"' : '') + '>' + swatch(key) +
+      /* the row is a label for its switch, named outright: left to itself a label works its first control, which on the earthquake row is the hour, day or week list */
+      h += '<label class="layer' + (L.pick ? (prefs.overlay ? '' : ' off') : isOn(key) ? '' : ' off') + '" data-layer="' + key + '"' + (L.pick ? '' : ' for="layer-' + key + '"') + (key === 'other' ? ' hidden' : '') + (L.about ? ' title="' + esc(L.about) + '"' : '') + '>' + swatch(key) +
         '<span class="name">' + L.name + '</span>' +
         (key === 'quakes' ? '<select class="pick" id="quake-window" aria-label="Show earthquakes from the past" title="Show earthquakes from the past hour, day or week">' + [['hour', 'Hour'], ['day', 'Day'], ['week', 'Week']].map(w => '<option value="' + w[0] + '"' + (prefs.win === w[0] ? ' selected' : '') + '>' + w[1] + '</option>').join('') + '</select>' : '') +
         '<span class="count" id="count-' + key + '"></span>' +
-        (L.pick ? '<select class="pick wide" id="overlay-pick" aria-label="Choose a NASA satellite view">' + OVERLAYS.map(o => '<option value="' + o[0] + '"' + ((prefs.overlay || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
+        (L.pick ? '<select class="pick wide" id="overlay-pick" aria-label="Choose a NASA satellite view">' + overOption(OVERLAYS[0]) + OVERLAY_GROUPS.map(g => '<optgroup label="' + g + '">' + OVERLAYS.filter(o => o.g === g).map(overOption).join('') + '</optgroup>').join('') + '</select>'
           : '<input type="checkbox" role="switch" id="layer-' + key + '"' + (isOn(key) ? ' checked' : '') + '><span class="switch"></span>') + '</label>';
     }
     h += '</div></section>';

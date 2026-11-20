@@ -20,6 +20,13 @@ This is a good-faith summary, not legal advice. If you plan to reuse any of this
 - **Licence:** [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1.0/); individual contents under the [Database Contents License 1.0](https://opendatacommons.org/licenses/dbcl/1.0/). © 2015 to 2024 Cristian Stoica.
 - **What that asks of you:** credit the source, and share any adapted version of the database under the same licence.
 
+### Power stations, gas pipelines and LNG terminals
+
+- **Files:** `data/energy-plants.csv`, `data/energy-pipelines.geojson`, `data/energy-lng.csv`, `assets/energy.json`, and the copy embedded in `index.html`.
+- **Origin:** [Global Energy Monitor](https://globalenergymonitor.org/): the Global Integrated Power Tracker (edition of 30 April 2025) and the Global Gas Infrastructure Tracker (edition of 1 May 2025), in the form Global Energy Monitor publishes for its own tracker maps. `tools/make-energy.py` cut them down: generating units are added up per power station; only stations of at least 1,000 MW (coal, gas and oil), 500 MW (hydro) or 300 MW (solar, wind) are kept, or twice that if still being built; only gas pipelines of 200 km or more that are running, being built or idle, with their routes simplified to about 6 km; and LNG terminals that are running or being built. Nuclear stations are not taken from here.
+- **Licence:** [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). Recommended citations: "Global Integrated Power Tracker, Global Energy Monitor, April 2025 release" and "Global Gas Infrastructure Tracker, Global Energy Monitor, May 2025 release".
+- **What that asks of you:** credit Global Energy Monitor and say that the data was changed, as above. These are not the newest editions: see `data/README.md` for how to bring them up to date.
+
 ### Map data
 
 | File | Origin | Terms |
@@ -61,7 +68,7 @@ Nothing below is stored in this repository. The visitor's browser fetches it fro
 | [NOAA Space Weather Prediction Center](https://www.swpc.noaa.gov/) | Aurora forecast, Kp index, solar wind, flares, alerts |
 | [GFZ Potsdam](https://kp.gfz-potsdam.de/) | Kp index, as a backup |
 | [NASA Solar Dynamics Observatory](https://sdo.gsfc.nasa.gov/) | Latest images of the Sun |
-| [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | Whole-Earth satellite views |
+| [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | Whole-Earth satellite views, from VIIRS and OMPS (NOAA-20, NOAA-21), SMAP, GPM IMERG, the MUR sea analyses and Sentinel-5P TROPOMI. NASA asks for the credit "NASA EOSDIS GIBS"; the night lights are NASA's Black Marble product |
 | [NASA EPIC](https://epic.gsfc.nasa.gov/) | Photographs of the whole Earth from the DSCOVR spacecraft |
 | [global-warming.org](https://global-warming.org/) and [NOAA GML](https://gml.noaa.gov/) | Daily carbon dioxide level |
 | [CelesTrak](https://celestrak.org/) | Orbital elements, predicted close passes (SOCRATES), catalogue records (SATCAT) |

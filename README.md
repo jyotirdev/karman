@@ -32,8 +32,8 @@ The name is the Kármán line: 100 km up, where the sky is said to end and space
 | **Atmosphere** | Clouds, wind, aurora, US weather warnings |
 | **In orbit** | Space stations, Starlink, other constellations, navigation, geostationary, every other satellite, debris, spent rocket stages, dead satellites, launches, deep space antennas |
 | **People and nature** | Cities and weather, news, wildlife sightings, radio stations, wild sounds, live cameras |
-| **Infrastructure** | Nuclear facilities, undersea internet cables |
-| **Map** | Borders, NASA satellite views (rain, sea temperature, snow and ice, haze, air pollution, true colour), city lights, grid |
+| **Infrastructure** | Nuclear facilities, undersea internet cables, and (switched off to begin with) the largest coal, gas, hydro, solar and wind power stations, gas pipelines and LNG terminals |
+| **Map** | Borders, NASA satellite views (rain, snow and sea ice, true colour, sea temperature, marine heat, ocean plant life, haze, air pollution, volcanic gas, ground temperature, soil moisture, vegetation, floods, last night's lights), city lights, grid |
 
 **Things to try**
 
@@ -42,7 +42,9 @@ The name is the Kármán line: 100 km up, where the sky is said to end and space
 - **Look through a camera.** Live video in California, a clip from the last few minutes in London, the past day replayed in Finland, a fresh picture every minute in Singapore.
 - **Tune the radio.** Click a station and listen live, or let it scan from country to country.
 - **Follow a cable or open a reactor.** Every undersea cable and nuclear site has a card: who owns it, how old it is, what it does.
-- **Search.** Press <kbd>/</kbd> for a city, a country, a satellite, a radio station, a cable or a nuclear site.
+- **Drape a measurement over the planet.** Pick a NASA satellite view in the Layers tab: last night's city lights, a volcano's gas, an algae bloom, a flood. A note says which days it is from, and when you zoom in and stop, the picture sharpens.
+- **Switch on the power.** Under Infrastructure: the world's largest power stations by fuel, and the gas pipelines and LNG terminals that feed them.
+- **Search.** Press <kbd>/</kbd> for a city, a country, a satellite, a radio station, a cable, a nuclear site, a power station or a pipeline.
 
 <details>
 <summary><b>Keyboard</b></summary>
@@ -136,7 +138,7 @@ Kármán exists because these organisations publish their data openly. Thank you
 | **News and places** | [Wikipedia](https://www.wikipedia.org/) · [Wikimedia Commons](https://commons.wikimedia.org/) · [OpenStreetMap](https://www.openstreetmap.org/copyright) · [BigDataCloud](https://www.bigdatacloud.com/) · [Statistics of the World](https://statisticsoftheworld.com/) · [Flagpedia](https://flagcdn.com/) · [Frankfurter](https://frankfurter.dev/) · [ExchangeRate-API](https://www.exchangerate-api.com/) · [caldays](https://caldays.com/) · [Nager.Date](https://date.nager.at/) · [Macrostrat](https://macrostrat.org/) · [GeoJS](https://www.geojs.io/) · [ipwho.is](https://ipwho.is/) |
 | **Life and sound** | [iNaturalist](https://www.inaturalist.org/) · [GBIF](https://www.gbif.org/) · [Radio Browser](https://www.radio-browser.info/) |
 | **Cameras** | [Fintraffic Digitraffic](https://www.digitraffic.fi/en/road-traffic/) · [Transport for London](https://tfl.gov.uk/info-for/open-data-users/) · [LTA Singapore](https://data.gov.sg/) · [Caltrans](https://quickmap.dot.ca.gov/) |
-| **Infrastructure** | [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/), as cleaned by [Tristan Hotham](https://github.com/Tristan-Hotham/submarine-cables) · [IAEA PRIS](https://pris-stats.iaea.org/) via [GeoNuclearData](https://github.com/cristianst85/GeoNuclearData) · [Wikidata](https://www.wikidata.org/) |
+| **Infrastructure** | [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/), as cleaned by [Tristan Hotham](https://github.com/Tristan-Hotham/submarine-cables) · [IAEA PRIS](https://pris-stats.iaea.org/) via [GeoNuclearData](https://github.com/cristianst85/GeoNuclearData) · [Wikidata](https://www.wikidata.org/) · [Global Energy Monitor](https://globalenergymonitor.org/) (Global Integrated Power Tracker and Global Gas Infrastructure Tracker, CC BY 4.0) |
 | **Base map** | [Natural Earth](https://www.naturalearthdata.com/) · [NASA Earth Observatory](https://earthobservatory.nasa.gov/features/NightLights) · Peter Bird (2003) via [Hugo Ahlenius](https://github.com/fraxen/tectonicplates) |
 | **Software** | [three.js](https://threejs.org/) · [satellite.js](https://github.com/shashwatak/satellite-js) · [hls.js](https://github.com/video-dev/hls.js) · [Geist](https://vercel.com/font) · [Unbounded](https://github.com/googlefonts/unbounded) |
 

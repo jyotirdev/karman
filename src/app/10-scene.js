@@ -52,6 +52,7 @@ const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.
    city lights on the night side, and near-live clouds on top. */
 const globeU = {
   tSurf: { value: blank }, tLights: { value: blank }, tClouds: { value: blank }, tOver: { value: blank }, uOver: { value: 0 },
+  tFine: { value: blank }, uFine: { value: new THREE.Vector4(0, 0, 1, 1) }, uFineOn: { value: 0 },          /* a sharper picture of one area, laid over tOver (81-views.js) */
   uSun: U.uSun, uClouds: { value: 0 }, uLights: { value: isOn('lights') ? 1 : 0 },
   uReveal: introU.reveal, uWire: introU.wire, uPulse: introU.pulse, uPulseK: introU.pulseGain, uPulseDir: introU.pulseDir
 };
@@ -62,6 +63,7 @@ const globe = new THREE.Mesh(
     vertexShader: 'varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vW=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
     fragmentShader: [
       'uniform sampler2D tSurf; uniform sampler2D tLights; uniform sampler2D tClouds; uniform sampler2D tOver; uniform float uOver;',
+      'uniform sampler2D tFine; uniform vec4 uFine; uniform float uFineOn;',
       'uniform vec3 uSun; uniform float uClouds; uniform float uLights; uniform float uReveal; uniform float uWire; uniform float uPulse; uniform float uPulseK; uniform vec3 uPulseDir;',
       'varying vec2 vUv; varying vec3 vW;',
       'float hgt(vec2 uv){ return max(texture2D(tSurf,uv).r-0.094,0.0); }',
@@ -91,6 +93,9 @@ const globe = new THREE.Mesh(
       '  float fres=pow(1.0-max(dot(n,v),0.0),3.2);',
       '  vec3 col=vec3(g)*vec3(0.965,0.985,1.03)+lights*vec3(1.0,0.95,0.86)*1.5+fres*mix(vec3(0.045),vec3(0.17,0.18,0.20),day);',
       '  vec4 ov=texture2D(tOver,vUv);',
+      /* uFine is the window as (left, bottom, 1/width, 1/height) in map coordinates; it blends in over a soft edge */
+      '  vec2 fq=(vUv-uFine.xy)*uFine.zw; vec2 fe=min(fq,1.0-fq);',
+      '  ov=mix(ov,texture2D(tFine,clamp(fq,0.0,1.0)),clamp(min(fe.x,fe.y)*30.0,0.0,1.0)*uFineOn);',
       '  col=mix(col,(ov.rgb/max(ov.a,0.02))*mix(0.6,0.95,day),clamp(ov.a,0.0,1.0)*uOver*0.88);',
       /* opening sequence: a scan line travels from pole to pole and the surface appears behind it; ahead of it only a faint grid shows */
       '  float sw=(1.0-n.y)*0.5;',

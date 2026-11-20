@@ -34,21 +34,24 @@ function routeLines(part, lines) {
   }
   if (line.length > 1) lines.push(line);
 }
+/* what a drawn route needs to be clicked on: every point as a direction from the centre of the Earth, where each piece ends,
+   and a cap that holds them all; plus a place on its longest piece to stand for it */
+function routeShape(lines) {
+  const v = new THREE.Vector3(), mid = new THREE.Vector3(); let n = 0; for (const l of lines) n += l.length;
+  const dirs = new Float32Array(n * 3), cuts = []; let k = 0;
+  for (const l of lines) { for (const p of l) { ll(p[1], p[0], 1, v); dirs[k++] = v.x; dirs[k++] = v.y; dirs[k++] = v.z; mid.add(v); } cuts.push(k / 3); }
+  mid.normalize(); let reach = 1;
+  for (let i = 0; i < k; i += 3) reach = Math.min(reach, dirs[i] * mid.x + dirs[i + 1] * mid.y + dirs[i + 2] * mid.z);
+  const longest = lines.reduce((a, b) => (b.length > a.length ? b : a)), at = longest[longest.length >> 1];
+  return { lat: at[1], lon: at[0], v: ll(at[1], at[0], 1.002), lines, dirs, cuts, mid, reach: Math.acos(clamp(reach, -1, 1)) };
+}
 function loadCables() {
   if (cablesObj) return;
-  const all = [], planned = [], v = new THREE.Vector3(), mid = new THREE.Vector3();
+  const all = [], planned = [];
   for (const c of ASSET.cables) {
     const lines = []; for (const part of String(c[8]).split(' ')) if (part) routeLines(unpackRoute(part), lines);
     if (!lines.length) continue;
-    /* for clicking: every drawn point as a direction from the centre of the Earth, and a cap that holds them all */
-    let n = 0; for (const l of lines) n += l.length;
-    const dirs = new Float32Array(n * 3), cuts = []; let k = 0; mid.set(0, 0, 0);
-    for (const l of lines) { for (const p of l) { ll(p[1], p[0], 1, v); dirs[k++] = v.x; dirs[k++] = v.y; dirs[k++] = v.z; mid.add(v); } cuts.push(k / 3); }
-    mid.normalize(); let reach = 1;
-    for (let i = 0; i < k; i += 3) reach = Math.min(reach, dirs[i] * mid.x + dirs[i + 1] * mid.y + dirs[i + 2] * mid.z);
-    const longest = lines.reduce((a, b) => (b.length > a.length ? b : a)), at = longest[longest.length >> 1];
-    const it = { layer: 'cable', id: c[9], title: c[0], year: c[1], planned: !!c[2], km: c[3], measured: !!c[4], landings: c[5], countries: c[6] ? String(c[6]).split('; ') : [], owners: c[7] ? String(c[7]).split('; ') : [],
-      lat: at[1], lon: at[0], v: ll(at[1], at[0], 1.002), lines, dirs, cuts, mid: mid.clone(), reach: Math.acos(clamp(reach, -1, 1)) };
+    const it = Object.assign({ layer: 'cable', id: c[9], title: c[0], year: c[1], planned: !!c[2], km: c[3], measured: !!c[4], landings: c[5], countries: c[6] ? String(c[6]).split('; ') : [], owners: c[7] ? String(c[7]).split('; ') : [] }, routeShape(lines));
     it.explain = 'A bundle of glass fibres about as thick as a garden hose, lying on the sea bed. Light pulses sent down the fibres carry phone calls, video and web pages between the places it lands. The route drawn here is a sketch, not the exact path.';
     cables.list.push(it);
     for (const l of lines) { all.push(l); planned.push(it.planned); }
@@ -61,11 +64,10 @@ function loadCables() {
   extra.cable = cables.list;
   setCount('cables', cables.list.length.toLocaleString());
 }
-/* the cable nearest a point on the globe, if one runs within reach (an angle in radians) */
-function cableNear(lat, lon, reach) {
-  if (!cablesObj || !cablesObj.visible) return null;
+/* the route nearest a point on the globe, if one in the list runs within reach (an angle in radians) */
+function routeNear(list, lat, lon, reach) {
   const p = ll(lat, lon, 1), sinR = Math.sin(reach); let best = null, bd = reach;
-  for (const c of cables.list) {
+  for (const c of list) {
     if (Math.acos(clamp(p.x * c.mid.x + p.y * c.mid.y + p.z * c.mid.z, -1, 1)) > c.reach + reach) continue;
     const d = c.dirs; let cut = 0;
     for (let i = 0; i + 1 < d.length / 3; i++) {
@@ -81,10 +83,18 @@ function cableNear(lat, lon, reach) {
       if (dist < bd) { bd = dist; best = c; }
     }
   }
+  if (best) best.gap = bd;
   return best;
+}
+const cableNear = (lat, lon, reach) => (cablesObj && cablesObj.visible ? routeNear(cables.list, lat, lon, reach) : null);
+/* a cable or a gas pipeline under the pointer, whichever is nearer */
+function lineNear(lat, lon, reach) {
+  const a = cableNear(lat, lon, reach), b = typeof pipeNear === 'function' ? pipeNear(lat, lon, reach) : null;
+  return a && b ? (a.gap <= b.gap ? a : b) : a || b;
 }
 /* how wide a few pixels are on the ground under the pointer, as an angle */
 const pixelReach = px => Math.max(0.0012, px * (camera.position.length() - 1) * 2 * Math.tan(camera.fov * D2R / 2) / (view.h * camera.zoom));
+/* the selected cable or pipeline, drawn again in white on top */
 function showCable(it) {
   if (cables.hi) { scene.remove(cables.hi); cables.hi.geometry.dispose(); cables.hi.material.dispose(); cables.hi = null; }
   cables.hiOf = it || null;

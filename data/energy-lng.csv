@@ -1,0 +1,310 @@
+"# Global Gas Infrastructure Tracker, Global Energy Monitor, edition of 2025-05-01. CC BY 4.0. Cut down by tools/make-energy.py: LNG terminals running or being built; phases added up per terminal."
+name,way,country,lat,lon,running_mtpa,building_mtpa,running_phases,first_year,wiki
+Arzew-Bethioua LNG Terminal,export,Algeria,35.805,-0.241,20.84,0,13,1978,https://www.gem.wiki/Arzew-Bethioua_LNG_Terminal
+Skikda LNG Terminal,export,Algeria,36.878,6.941,4.5,0,1,2013,https://www.gem.wiki/Sonatrach_Skikda_LNG_Terminal
+Angola LNG Terminal,export,Angola,-6.120,12.336,5.2,0,1,2013,https://www.gem.wiki/Angola_LNG_Terminal
+Antigua Power LNG Terminal,import,Antigua and Barbuda,17.137,-61.752,0,0.0,0,,https://www.gem.wiki/Antigua_Power_LNG_Terminal
+Escobar FSRU,import,Argentina,-34.333,-58.817,6.1,0,1,2011,https://www.gem.wiki/Escobar_FSRU
+Australia Pacific LNG Terminal,export,Australia,-23.756,151.191,9.0,0,2,2016,https://www.gem.wiki/Australia_Pacific_LNG_Terminal
+Gladstone LNG Terminal,export,Australia,-23.776,151.210,7.8,0,2,2015,https://www.gem.wiki/Gladstone_LNG_Terminal
+Gorgon LNG Terminal,export,Australia,-20.790,115.450,15.6,0,3,2016,https://www.gem.wiki/Gorgon_LNG_Terminal
+Ichthys FLNG Terminal,export,Australia,-17.962,122.236,8.9,0,2,2018,https://www.gem.wiki/Ichthys_FLNG_Terminal
+North West Shelf LNG Terminal,export,Australia,-20.594,116.777,16.7,0,5,1989,https://www.gem.wiki/North_West_Shelf_LNG_Terminal
+Outer Harbor FSRU,import,Australia,-34.770,138.503,0,1.1,0,,https://www.gem.wiki/Outer_Harbor_FSRU
+Pluto LNG Terminal,export,Australia,-20.613,116.766,4.9,5.0,1,2012,https://www.gem.wiki/Pluto_LNG_Terminal
+Port Kembla FSRU Terminal,import,Australia,-34.481,150.889,0,2.33,0,,https://www.gem.wiki/Port_Kembla_FSRU
+Prelude FLNG Terminal,export,Australia,-15.254,123.538,3.6,0,1,2019,https://www.gem.wiki/Prelude_FLNG_Terminal
+Queensland Curtis LNG Terminal,export,Australia,-23.769,151.199,8.5,0,2,2014,https://www.gem.wiki/Queensland_Curtis_LNG_Terminal
+Wheatstone LNG Terminal,export,Australia,-21.698,115.001,8.9,0,2,2017,https://www.gem.wiki/Wheatstone_LNG_Terminal
+Moheshkhali FLNG Terminal (Petrobangla),import,Bangladesh,21.608,91.826,4.5,0,1,2018,https://www.gem.wiki/Moheshkhali_FLNG_Terminal_(Petrobangla)
+Summit FSRU,import,Bangladesh,21.550,91.950,3.8,0,1,2019,https://www.gem.wiki/Summit_FSRU
+Zeebrugge LNG Terminal,import,Belgium,51.353,3.222,11.3,1.3,2,1987,https://www.gem.wiki/Fluxys_Zeebrugge_LNG_Terminal
+Bahia FSRU,import,Brazil,-12.785,-38.704,5.6,0,1,2014,https://www.gem.wiki/Bahia_FSRU
+Cosan FSRU,import,Brazil,-23.912,-46.342,3.7,0,1,2024,https://www.gem.wiki/Cosan_FSRU
+Guanabara Bay FSRU,import,Brazil,-22.790,-43.156,8.1,0,1,2009,https://www.gem.wiki/Guanabara_Bay_FSRU
+New Fortress Barcarena FSRU,import,Brazil,-1.539,-48.754,6.0,0,1,2024,https://www.gem.wiki/New_Fortress_Barcarena_FSRU
+Porto do Açu FSRU,import,Brazil,-21.848,-40.992,5.6,0,1,2021,https://www.gem.wiki/Porto_do_A%C3%A7u_FSRU
+Sepetiba Bay FSRU,import,Brazil,-22.928,-43.857,2.7,0,1,2022,https://www.gem.wiki/Sepetiba_Bay_FSRU
+Sergipe FSRU,import,Brazil,-10.843,-36.918,5.6,0,1,2020,https://www.gem.wiki/Sergipe_FSRU
+Suape FSRU,import,Brazil,-8.398,-34.960,0,3.76,0,,https://www.gem.wiki/Suape_FSRU
+Terminal Gás Sul FSRU,import,Brazil,-26.231,-48.641,6.0,0,1,2024,https://www.gem.wiki/Terminal_G%C3%A1s_Sul_FSRU
+Brunei LNG Terminal,export,Brunei,4.670,114.467,7.4,0,5,1972,https://www.gem.wiki/Brunei_LNG_Terminal
+Cameroon FLNG Terminal,export,Cameroon,2.935,9.910,2.4,0,4,2018,https://www.gem.wiki/Cameroon_FLNG_Terminal
+Fort Nelson LNG Terminal,export,Canada,58.805,-122.700,0.02,0,1,2021,https://www.gem.wiki/Fort_Nelson_LNG_Terminal
+LNG Canada Terminal,export,Canada,53.925,-128.752,0,14.0,0,,https://www.gem.wiki/LNG_Canada_Terminal
+Saint John LNG Terminal,import,Canada,45.211,-65.978,7.5,0,1,2009,https://www.gem.wiki/Saint_John_LNG_Terminal
+Tilbury Island LNG Terminal,export,Canada,49.143,-123.034,0.28,0,2,1971,https://www.gem.wiki/Tilbury_Island_LNG_Terminal
+Woodfibre LNG Terminal,export,Canada,49.702,-123.159,0,2.1,0,,https://www.gem.wiki/Woodfibre_LNG_Terminal
+Mejillones LNG Terminal,import,Chile,-23.059,-70.366,1.5,0,1,2010,https://www.gem.wiki/Mejillones_LNG_Terminal
+Quintero LNG Terminal,import,Chile,-32.783,-71.533,4.0,0,1,2009,https://www.gem.wiki/Quintero_LNG_Terminal
+Chaozhou LNG Terminal (Huafeng),import,China,23.577,117.122,0,1.0,0,,https://www.gem.wiki/Chaozhou_LNG_Terminal_(Huafeng)
+Chaozhou LNG Terminal (Huaying）,import,China,23.584,117.129,6.0,0,1,2024,https://www.gem.wiki/Chaozhou_LNG_Terminal_(Huaying)
+Dalian LNG Terminal,import,China,38.960,121.884,10.0,0,1,2011,https://www.gem.wiki/Dalian_LNG_Terminal
+Damaiyu LNG Terminal,import,China,28.106,121.135,0,2.0,0,,https://www.gem.wiki/Damaiyu_LNG_Terminal
+Fangchenggang LNG Terminal,import,China,21.589,108.355,0.6,0,1,2019,https://www.gem.wiki/Fangchenggang_LNG_Terminal
+Fujian LNG Terminal,import,China,25.213,118.998,6.5,0,2,2009,https://www.gem.wiki/Fujian_LNG_Terminal
+Ganyu LNG Terminal,import,China,35.028,119.297,0,3.0,0,,https://www.gem.wiki/Ganyu_LNG_Terminal
+Guangdong Dapeng LNG Terminal,import,China,22.580,114.434,7.7,0,1,2006,https://www.gem.wiki/Guangdong_Dapeng_LNG_Terminal
+Guangxi LNG Terminal,import,China,21.449,109.532,3.0,9.1,1,2016,https://www.gem.wiki/Guangxi_LNG_Terminal
+Guangzhou Nansha LNG Terminal,import,China,22.840,113.560,1.0,0,1,2023,https://www.gem.wiki/Guangzhou_Nansha_LNG_Terminal
+Hainan LNG Terminal,import,China,19.723,109.181,3.0,0,1,2014,https://www.gem.wiki/Hainan_LNG_Terminal
+Hainan Shennan LNG Storage Facility,import,China,19.978,110.058,0.27,0,1,2014,https://www.gem.wiki/Hainan_Shennan_LNG_Terminal
+Hongmei LNG Terminal,import,China,22.954,113.557,1.5,0,1,2012,https://www.gem.wiki/Hongmei_LNG_Terminal
+Huizhou LNG Terminal,import,China,22.612,114.742,0,4.0,0,,https://www.gem.wiki/Huizhou_LNG_Terminal
+Jiangsu LNG Terminal,import,China,32.529,121.428,10.5,0,3,2011,https://www.gem.wiki/Jiangsu_LNG_Terminal
+Jiangyin LNG Terminal (Garson Gas),import,China,31.949,120.007,0,3.0,0,,https://www.gem.wiki/Jiangyin_LNG_Terminal_(Garson_Gas)
+Jieyang LNG Terminal (PipeChina),import,China,22.934,116.371,2.0,0,1,2017,https://www.gem.wiki/Jieyang_LNG_Terminal_(PipeChina)
+Longkou LNG Terminal,import,China,37.681,120.220,0,6.0,0,,https://www.gem.wiki/Longkou_LNG_Terminal
+Pinghu LNG Terminal,import,China,30.681,121.247,1.0,0,1,2022,https://www.gem.wiki/Pinghu_LNG_Terminal
+Qidong LNG Terminal,import,China,32.042,121.747,5.01,0,4,2017,https://www.gem.wiki/Qidong_LNG_Terminal
+Rudong LNG Terminal,import,China,32.527,121.413,0,3.0,0,,https://www.gem.wiki/Rudong_LNG_Terminal
+Rudong LNG Terminal (China Resources),import,China,32.530,121.418,0,6.5,0,,https://www.gem.wiki/Rudong_LNG_Terminal_(China_Resources)
+Rudong LNG Terminal (Jiangsu Guoxin),import,China,32.527,121.413,2.95,3.05,1,2023,https://www.gem.wiki/Rudong_LNG_Terminal_(Jiangsu_Guoxin)
+Shandong LNG Terminal,import,China,35.586,119.760,11.0,0,3,2014,https://www.gem.wiki/Shandong_LNG_Terminal
+Shanghai Yangshan LNG Terminal,import,China,30.604,122.102,6.0,6.0,2,2009,https://www.gem.wiki/Shanghai_Yangshan_LNG_Terminal
+Shenzhen Diefu CNOOC LNG Terminal,import,China,22.593,114.444,4.0,0,1,2018,https://www.gem.wiki/Shenzhen_Diefu_CNOOC_LNG_Terminal
+Shenzhen LNG Terminal,import,China,22.594,114.428,0,3.0,0,,https://www.gem.wiki/Shenzhen_LNG_Terminal
+Shenzhen LNG Terminal (Shenzhen Gas),import,China,22.619,114.385,0.8,2.0,1,2019,https://www.gem.wiki/Shenzhen_LNG_Terminal_(Shenzhen_Gas_)
+Sinopec Longkou LNG Terminal,import,China,37.650,120.291,0,6.5,0,,https://www.gem.wiki/Sinopec_Longkou_LNG_Terminal
+Tangshan LNG Terminal,import,China,38.933,118.533,10.0,0,2,2013,https://www.gem.wiki/Tangshan_LNG_Terminal
+Tianjin LNG Terminal (Beijing Gas Group),import,China,38.738,117.714,5.0,0.0,1,2023,https://www.gem.wiki/Tianjin_LNG_Terminal_(Beijing_Gas_Group)
+Tianjin LNG Terminal (PipeChina),import,China,38.976,117.787,6.0,4.0,1,2023,https://www.gem.wiki/Tianjin_LNG_Terminal_(PipeChina)
+Tianjin LNG Terminal (Sinopec),import,China,38.749,117.715,10.8,0.85,2,2018,https://www.gem.wiki/Tianjin_LNG_Terminal_(Sinopec)
+Wenzhou Huagang LNG Terminal,import,China,27.903,121.128,0,3.0,0,,https://www.gem.wiki/Wenzhou_Huagang_LNG_Terminal
+Wenzhou LNG Terminal,import,China,28.005,121.083,3.0,0,1,2023,https://www.gem.wiki/Wenzhou_LNG_Terminal
+Wuhaogou LNG Storage Facility,import,China,31.294,121.707,1.5,0,1,2008,https://www.gem.wiki/Wuhaogou_LNG_Storage_Facility
+Wuhu LNG Terminal,import,China,31.216,118.108,0,1.5,0,,https://www.gem.wiki/Wuhu_LNG_Terminal
+Xintian Tangshan LNG Terminal,import,China,38.939,118.541,5.0,5.0,1,2023,https://www.gem.wiki/Xintian_Tangshan_LNG_Terminal
+Yancheng LNG Terminal,import,China,34.274,120.268,3.0,3.0,1,2022,https://www.gem.wiki/Yancheng_LNG_Terminal
+Yangjiang LNG Terminal,import,China,21.667,111.835,0,2.8,0,,https://www.gem.wiki/Yangjiang_LNG_Terminal
+Yantai LNG Terminal,import,China,37.722,121.046,0,5.9,0,,https://www.gem.wiki/Yantai_LNG_Terminal
+Yingkou LNG Terminal,import,China,40.199,121.977,0,6.2,0,,https://www.gem.wiki/Yingkou_LNG_Terminal
+Yueyang LNG Terminal,import,China,29.578,112.911,0,1.5,0,,https://www.gem.wiki/Yueyang_LNG_Terminal
+Zhangzhou LNG Terminal,import,China,24.265,118.128,0,3.0,0,,https://www.gem.wiki/Zhangzhou_LNG_Terminal
+Zhejiang Energy Liuheng LNG Terminal,import,China,29.712,122.069,0,6.35,0,,https://www.gem.wiki/Zhejiang_Energy_Liuheng_LNG_Terminal
+Zhejiang Ningbo LNG Terminal,import,China,29.894,122.092,6.0,6.0,2,2012,https://www.gem.wiki/Zhejiang_Ningbo_LNG_Terminal
+Zhoushan LNG Terminal,import,China,30.101,122.283,5.0,5.0,2,2018,https://www.gem.wiki/Zhoushan_LNG_Terminal
+Zhuhai LNG Terminal,import,China,21.906,113.219,3.5,3.5,1,2013,https://www.gem.wiki/Zhuhai_LNG_Terminal
+Cartagena FSRU (Colombia),import,Colombia,10.400,-75.500,3.04,0,1,2016,https://www.gem.wiki/Cartagena_FSRU_(Colombia)
+Krk FSRU,import,Croatia,45.189,14.545,2.13,2.35,2,2021,https://www.gem.wiki/Krk_FSRU
+Cyprus LNG Terminal,import,Cyprus,34.720,33.324,0,2.0,0,,https://www.gem.wiki/Cyprus_LNG_Terminal
+Andrés LNG Terminal,import,Dominican Republic,18.407,-69.628,1.9,0,1,2003,https://www.gem.wiki/Andr%C3%A9s_LNG_Terminal
+Manzanillo (Dominican Republic) LNG Terminal,import,Dominican Republic,19.696,-71.727,0,1.0,0,,https://www.gem.wiki/Manzanillo_(Dominican_Republic)_LNG_Terminal
+Ain Sokhna Hoegh FSRU,import,Egypt,29.603,32.340,4.2,0,1,2015,https://www.gem.wiki/Ain_Sokhna_Hoegh_FSRU
+Damietta SEGAS LNG Terminal,export,Egypt,31.469,31.747,5.0,0,1,2005,https://www.gem.wiki/Damietta_Segas_LNG_Terminal
+Egyptian LNG Terminal,export,Egypt,31.349,30.319,7.2,0,2,2005,https://www.gem.wiki/ELNG_IDCO_Terminal
+Acajutla FSRU,import,El Salvador,13.576,-89.840,2.15,0,1,2022,https://www.gem.wiki/Acajutla_FSRU
+Punta Europa LNG Terminal,export,Equatorial Guinea,3.776,8.701,3.7,0,1,2007,https://www.gem.wiki/Punta_Europa_LNG_Terminal
+Paldiski FSRU,import,Estonia,59.384,24.075,0,0.0,0,,https://www.gem.wiki/Paldiski_FSRU
+Hamina LNG Terminal,import,Finland,60.518,27.161,0.17,0,1,2022,https://www.gem.wiki/Hamina_LNG_Terminal
+Inkoo FSRU,import,Finland,60.014,23.915,3.68,0,1,2023,https://www.gem.wiki/Inkoo_FSRU
+Pori LNG Terminal,import,Finland,61.638,21.399,0.1,0,1,2016,https://www.gem.wiki/Pori_LNG_Terminal
+Tornio Manga LNG Terminal,import,Finland,65.847,24.152,0.4,0,1,2019,https://www.gem.wiki/Tornio_Manga_LNG_Terminal
+Dunkirk LNG Terminal,import,France,51.034,2.197,9.56,0,2,2017,https://www.gem.wiki/Dunkirk_LNG_Terminal
+Fos Cavaou LNG Terminal,import,France,43.420,4.901,8.82,0,2,2010,https://www.gem.wiki/Fos_Cavaou_LNG_Terminal
+Fos Tonkin LNG Terminal,import,France,43.454,4.852,1.2,0,1,1972,https://www.gem.wiki/Fos_Tonkin_LNG_Terminal
+Le Havre FSRU,import,France,49.462,0.043,3.68,0,1,2023,https://www.gem.wiki/Le_Havre_FSRU
+Montoir LNG Terminal,import,France,47.303,-2.143,8.0,0,1,1980,https://www.gem.wiki/Montoir_LNG_Terminal
+Brunsbüttel FSRU,import,Germany,53.914,8.976,3.68,0,1,2023,https://www.gem.wiki/Brunsbüttel_FSRU
+Brunsbüttel LNG Terminal,import,Germany,53.914,8.976,0,5.88,0,,https://www.gem.wiki/Brunsb%C3%BCttel_LNG_Terminal
+Mukran FSRU,import,Germany,54.478,13.598,9.93,0,2,2024,https://www.gem.wiki/Mukran_FSRU
+Stade FSRU,import,Germany,53.653,9.515,0,4.41,0,,https://www.gem.wiki/Stade_FSRU
+Stade LNG Terminal,import,Germany,53.652,9.510,0,9.78,0,,https://www.gem.wiki/Stade_LNG_Terminal
+Wilhelmshaven FSRU,import,Germany,53.517,8.133,5.7,0,1,2023,https://www.gem.wiki/Wilhelmshaven_FSRU
+Wilhelmshaven TES FSRU,import,Germany,53.517,8.133,0,3.31,0,,https://www.gem.wiki/Wilhelmshaven_TES_FSRU
+Tema FSRU,import,Ghana,5.734,0.032,0,1.7,0,,https://www.gem.wiki/Tema_FSRU
+Gibraltar LNG Terminal,import,Gibraltar,36.134,-5.350,0.1,0,1,2019,https://www.gem.wiki/Gibraltar_LNG_Terminal
+Alexandroupolis FSRU,import,Greece,40.748,25.719,0,4.04,0,,https://www.gem.wiki/Alexandroupolis_FSRU
+Revithoussa LNG Terminal,import,Greece,37.960,23.402,5.1,0,1,2000,https://www.gem.wiki/Revithoussa_LNG_Terminal
+Hong Kong FSRU,import,Hong Kong,22.154,113.964,6.1,0,1,2023,https://www.gem.wiki/Hong_Kong_FSRU
+Chhara LNG Terminal,import,India,20.721,70.750,0,5.0,0,,https://www.gem.wiki/Chhara_LNG_Terminal
+Dabhol LNG Terminal,import,India,17.540,73.160,5.0,3.0,1,2013,https://www.gem.wiki/Dabhol_LNG_Terminal
+Dahej LNG Terminal,import,India,21.675,72.536,17.5,5.0,2,2004,https://www.gem.wiki/Dahej_LNG_Terminal
+Dhamra LNG Terminal,import,India,20.821,86.965,5.0,0,1,2023,https://www.gem.wiki/Dhamra_LNG_Terminal
+Ennore LNG Terminal,import,India,13.259,80.337,5.0,0,1,2019,https://www.gem.wiki/Ennore_LNG_Terminal
+H-Energy Kakinada LNG Terminal,import,India,16.975,82.279,0,4.0,0,,https://www.gem.wiki/H-Energy_Kakinada_LNG_Terminal
+Hazira LNG Terminal,import,India,21.098,72.624,5.0,0,1,2005,https://www.gem.wiki/Hazira_LNG_Terminal
+Jafrabad FSRU,import,India,20.867,71.367,0,5.0,0,,https://www.gem.wiki/Jafrabad_FSRU
+Jaigarh LNG Terminal,import,India,17.304,73.206,0,6.0,0,,https://www.gem.wiki/Jaigarh_LNG_Terminal
+Kochi LNG Terminal,import,India,9.979,76.226,5.0,0,1,2013,https://www.gem.wiki/Kochi_LNG_Terminal
+Mundra LNG Terminal,import,India,22.737,69.667,5.0,0,1,2020,https://www.gem.wiki/Mundra_LNG_Terminal
+Arun LNG Import Terminal,import,Indonesia,5.223,97.083,3.0,0,1,2015,https://www.gem.wiki/Arun_LNG_Terminal
+Bontang LNG Terminal,export,Indonesia,0.101,117.470,5.75,0,2,1998,https://www.gem.wiki/Bontang_LNG_Terminal
+Donggi-Senoro LNG Terminal,export,Indonesia,-1.254,122.586,2.0,0,1,2015,https://www.gem.wiki/Donggi-Senoro_LNG_Terminal
+Gorontalo FSRU,import,Indonesia,0.545,123.061,0.2,0,1,2022,https://www.gem.wiki/Gorontalo_FSRU
+Jawa Satu FSRU,import,Indonesia,-6.244,107.583,2.4,0,1,2021,https://www.gem.wiki/Jawa_Satu_FSRU
+Lampung FSRU,import,Indonesia,-5.450,105.940,2.7,0,1,2014,https://www.gem.wiki/Lampung_FSRU_Terminal
+Nusantara Regas Satu Terminal,import,Indonesia,-5.993,106.820,3.0,0,1,2012,https://www.gem.wiki/Nusantara_Regas_Satu_Terminal
+Tangguh LNG Terminal,export,Indonesia,-2.443,133.139,11.4,0,3,2009,https://www.gem.wiki/Tangguh_LNG_Terminal
+Tanjung Benoa FSRU,import,Indonesia,-8.746,115.209,0.35,0,1,2016,https://www.gem.wiki/Tanjung_Benoa_FSRU
+Teluk Lamong LNG Terminal,import,Indonesia,-7.204,112.669,0,0.3,0,,https://www.gem.wiki/Teluk_Lamong_LNG_Terminal
+Iran NIOC LNG Terminal,export,Iran,27.476,52.608,0,12.3,0,,https://www.gem.wiki/Iran_NIOC_LNG_Terminal
+Adriatic LNG Terminal,import,Italy,45.092,12.586,6.62,0,1,2009,https://www.gem.wiki/Adriatic_Rovigo_LNG_Terminal
+HIGAS LNG Terminal,import,Italy,39.864,8.554,0.2,0,1,2021,https://www.gem.wiki/HIGAS_LNG_Terminal
+Panigaglia LNG Terminal,import,Italy,44.074,9.831,2.5,0,1,1971,https://www.gem.wiki/Panigaglia_LNG_Terminal
+Piombino FSRU,import,Italy,42.932,10.546,3.68,0,1,2023,https://www.gem.wiki/Piombino_FSRU
+Ravenna FSRU,import,Italy,44.483,12.291,0,3.68,0,,https://www.gem.wiki/Ravenna_FSRU
+Ravenna LNG Terminal,import,Italy,44.472,12.248,0.7,0,1,2021,https://www.gem.wiki/Ravenna_LNG_Terminal
+Toscana FSRU,import,Italy,43.644,9.989,3.68,0,2,2014,https://www.gem.wiki/Toscana_LNG_Terminal
+Montego Bay LNG Terminal,import,Jamaica,18.463,-77.935,0.5,0,1,2016,https://www.gem.wiki/Montego_Bay_LNG_Terminal
+Old Harbour FSRU,import,Jamaica,17.895,-77.101,3.6,0,1,2019,https://www.gem.wiki/Old_Harbour_FSRU
+Akita LNG Terminal,import,Japan,39.762,140.055,0.6,0,1,2015,https://www.gem.wiki/Akita_LNG_Terminal
+Chita Kyodo LNG Terminal,import,Japan,34.967,136.823,7.5,0,1,1977,https://www.gem.wiki/Chita_Kyodo_LNG_Terminal
+Chita LNG Terminal,import,Japan,34.968,136.827,10.9,0,1,1977,https://www.gem.wiki/Chita_LNG_Terminal
+Chita Midorihama LNG Terminal,import,Japan,34.962,136.820,7.7,0,1,2001,https://www.gem.wiki/Chita_Midorihama_LNG_Terminal
+Choguko Electric LNG Terminal,import,Japan,33.893,130.886,4.3,0,1,2006,https://www.gem.wiki/Choguko_Electric_LNG_Terminal
+Fukuoka LNG Terminal,import,Japan,33.617,130.407,0.64,0,1,1993,https://www.gem.wiki/Fukuoka_LNG_Terminal
+Futtsu LNG Terminal,import,Japan,35.345,139.821,22.9,0,1,1985,https://www.gem.wiki/Futtsu_LNG_Terminal
+Hachinohe LNG Terminal,import,Japan,40.543,141.525,1.5,0,1,2015,https://www.gem.wiki/Hachinohe_LNG_Terminal
+Hakodate LNG Terminal,import,Japan,41.807,140.713,0.2,0,1,2006,https://www.gem.wiki/Hakodate_LNG_Terminal
+Hatsukaichi LNG Terminal,import,Japan,34.341,132.340,0.9,0,1,1996,https://www.gem.wiki/Hatsukaichi_LNG_Terminal
+Hibiki LNG Terminal,import,Japan,33.931,130.779,2.4,0,1,2014,https://www.gem.wiki/Hibiki_LNG_terminal
+Higashi Niigata LNG Terminal,import,Japan,37.996,139.237,8.9,0,1,1984,https://www.gem.wiki/Higashi_Niigata_LNG_Terminal
+Higashi Ohgishima LNG Terminal,import,Japan,35.495,139.745,13.2,0,1,1984,https://www.gem.wiki/Higashi_Ohgishima_LNG_Terminal
+Himeji Joint LNG Terminal,import,Japan,34.817,134.683,8.1,0,1,1979,https://www.gem.wiki/Himeji_Joint_LNG_Terminal
+Himeji LNG Terminal,import,Japan,34.817,134.683,5.5,0,1,1979,https://www.gem.wiki/Himeji_LNG_Terminal
+Hitachi LNG Terminal,import,Japan,36.484,140.619,6.4,0,2,2016,https://www.gem.wiki/Hitachi_LNG_Terminal
+Ishikari LNG Terminal,import,Japan,43.210,141.293,4.6,0,1,2012,https://www.gem.wiki/Ishikari_LNG_Terminal
+Joetsu LNG Terminal,import,Japan,37.209,138.277,3.2,0,1,2012,https://www.gem.wiki/Joetsu_LNG_Terminal
+Kagoshima LNG Terminal,import,Japan,31.485,130.530,0.2,0,1,1996,https://www.gem.wiki/Kagoshima_LNG_Terminal
+Kawagoe LNG Terminal,import,Japan,35.010,136.697,8.7,0,1,1997,https://www.gem.wiki/Kawagoe_LNG_Terminal
+Kushiro LNG Terminal,import,Japan,42.998,144.345,0.5,0,1,2015,https://www.gem.wiki/Kushiro_LNG_Terminal
+Mizushima LNG Terminal,import,Japan,34.499,133.733,4.3,0,1,2006,https://www.gem.wiki/Mizushima_LNG_Terminal
+Nagasaki LNG Terminal,import,Japan,32.759,129.806,0.2,0,1,2003,https://www.gem.wiki/Nagasaki_LNG_Terminal
+Nakagusuku LNG Terminal,import,Japan,26.275,127.812,9.0,0,1,2013,https://www.gem.wiki/Nakagusuku_LNG_Terminal
+Naoetsu LNG Terminal,import,Japan,37.205,138.277,2.1,0,1,2013,https://www.gem.wiki/Naoetsu_LNG_Terminal
+Negishi LNG Terminal,import,Japan,35.404,139.629,12.0,0,1,1969,https://www.gem.wiki/Negishi_LNG_Terminal
+Niihama LNG Terminal,import,Japan,33.985,133.314,1.0,0,1,2022,https://www.gem.wiki/Niihama_LNG_Terminal
+Ohgishima LNG Terminal,import,Japan,35.494,139.740,10.2,0,1,1998,https://www.gem.wiki/Ohgishima_LNG_Terminal
+Oita LNG Terminal,import,Japan,33.271,131.708,5.4,0,1,1990,https://www.gem.wiki/Oita_LNG_Terminal
+Sakai LNG Terminal,import,Japan,34.571,135.414,6.4,0,1,2006,https://www.gem.wiki/Sakai_LNG_Terminal
+Sakaide LNG Terminal,import,Japan,34.357,133.837,1.2,0,1,2010,https://www.gem.wiki/Sakaide_LNG_Terminal
+Senboku 1 LNG Terminal,import,Japan,34.549,135.428,1.9,0,1,1972,https://www.gem.wiki/Senboku_1_LNG_Terminal
+Senboku 2 LNG Terminal,import,Japan,34.537,135.401,10.0,0,1,1977,https://www.gem.wiki/Senboku_2_LNG_Terminal
+Sendai LNG Terminal,import,Japan,38.274,141.006,0.8,0,1,2013,https://www.gem.wiki/Sendai_LNG_Terminal
+Shin Minato LNG Terminal,import,Japan,38.280,141.026,0.3,0,1,1997,https://www.gem.wiki/Shin_Minato_LNG_Terminal
+Shin-Sendai LNG Terminal,import,Japan,38.277,141.039,1.7,0,1,2015,https://www.gem.wiki/Shin-Sendai_LNG_Terminal
+Sodegaura LNG Terminal,import,Japan,35.468,139.972,32.7,0,1,1973,https://www.gem.wiki/Sodegaura_LNG_Terminal
+Sodeshi Shimizu LNG Terminal,import,Japan,35.027,138.498,2.9,0,1,1996,https://www.gem.wiki/Sodeshi_Shimizu_LNG_Terminal
+Tobata LNG Terminal,import,Japan,33.918,130.866,7.6,0,1,1977,https://www.gem.wiki/Tobata_LNG_Terminal
+Toyama Shinko LNG Terminal,import,Japan,36.757,137.222,1.8,0,1,2018,https://www.gem.wiki/Toyama_Shinko_LNG_Terminal
+Yanai LNG Terminal,import,Japan,33.951,132.125,2.3,0,1,1990,https://www.gem.wiki/Yanai_LNG_Terminal
+Yokkaichi LNG Center,import,Japan,34.978,136.666,6.4,0,1,1987,https://www.gem.wiki/Yokkaichi_LNG_Center
+Yokkaichi Works LNG Terminal,import,Japan,34.977,136.666,2.1,0,1,1991,https://www.gem.wiki/Yokkaichi_LNG_Terminal
+Yoshinoura LNG Terminal,import,Japan,26.479,127.928,0.8,0,1,2012,https://www.gem.wiki/Yoshinoura_LNG_Terminal
+Aqaba Jordan FSRU,import,Jordan,29.375,34.964,3.8,0,1,2015,https://www.gem.wiki/Aqaba_Jordan_FSRU
+Al Zour LNG Import Terminal,import,Kuwait,28.718,48.397,22.0,0,1,2022,https://www.gem.wiki/Al_Zour_LNG_Terminal
+Klaipeda FSRU,import,Lithuania,55.665,21.138,2.9,0,1,2014,https://www.gem.wiki/Klaipeda_FSRU
+Dua FLNG Terminal,export,Malaysia,12.000,113.000,1.5,0,1,2021,https://www.gem.wiki/Dua_FLNG_Terminal
+Dua Malaysia LNG Terminal,export,Malaysia,3.282,113.083,9.6,0,3,1995,https://www.gem.wiki/Dua_Malaysia_LNG_Terminal
+Malaysia LNG Terminal,export,Malaysia,3.290,113.087,3.6,0,1,2016,https://www.gem.wiki/Malaysia_LNG_Terminal_Train_9
+Melaka FSRU,import,Malaysia,2.244,102.123,3.8,0,1,2013,https://www.gem.wiki/Melaka_FSRU
+Pengerang Johor LNG Terminal,import,Malaysia,1.341,104.182,3.5,0,1,2017,https://www.gem.wiki/Pengerang_Johur_LNG_Terminal
+Satu FLNG Terminal,export,Malaysia,7.376,115.480,1.2,0,1,2017,https://www.gem.wiki/Satu_FLNG_Terminal
+Satu Malaysia Terminal,export,Malaysia,3.285,113.081,8.4,0,3,1983,https://www.gem.wiki/Satu_Malaysia_Terminal
+Tiga FLNG Terminal,export,Malaysia,5.968,118.215,0,2.0,0,,https://www.gem.wiki/Tiga_FLNG_Terminal
+Tiga Malaysia LNG Terminal,export,Malaysia,3.290,113.088,7.2,0,2,2003,https://www.gem.wiki/Tiga_Malaysia_LNG_Terminal
+Delimara FSRU,import,Malta,35.828,14.554,0.5,0,1,2017,https://www.gem.wiki/Delimara_FSRU
+Greater Tortue Ahmeyim FLNG Terminal,export,Mauritania,16.356,-17.746,0,2.52,0,,https://www.gem.wiki/Greater_Tortue_Ahmeyim_FLNG
+Altamira LNG Terminal,import,Mexico,22.337,-97.869,5.7,0,1,2006,https://www.gem.wiki/Altamira_LNG_Terminal
+Costa Azul Export Terminal,export,Mexico,31.989,-116.846,0,3.25,0,,https://www.gem.wiki/Costa_Azul_LNG_Terminal
+Costa Azul LNG Import Terminal,import,Mexico,31.989,-116.846,7.6,0,1,2008,https://www.gem.wiki/Costa_Azul_LNG_Terminal
+Manzanillo (Mexico) LNG Terminal,import,Mexico,19.052,-104.316,3.8,0,1,2012,https://www.gem.wiki/Manzanillo_(Mexico)_LNG_Terminal
+New Fortress Altamira FLNG Terminal,export,Mexico,22.654,-97.680,1.4,1.4,1,2024,https://www.gem.wiki/New_Fortress_Altamira_FLNG_Terminal
+Pichilingue LNG Terminal,import,Mexico,24.274,-110.327,0.8,0,1,2021,https://www.gem.wiki/Pichilingue_LNG_Terminal
+Coral South FLNG Terminal,export,Mozambique,-10.900,41.200,3.4,0,1,2022,https://www.gem.wiki/Coral_South_FLNG_Terminal
+Eemshaven FSRU,import,Netherlands,53.436,6.833,5.88,0,1,2022,https://www.gem.wiki/Eemshaven_FSRU
+Gate LNG Terminal,import,Netherlands,51.971,4.069,11.76,2.94,1,2011,https://www.gem.wiki/Gate_LNG_Terminal
+Puerto Sandino FSRU,import,Nicaragua,12.171,-86.767,0,1.3,0,,https://www.gem.wiki/Puerto_Sandino_FSRU
+Nigeria LNG Terminal,export,Nigeria,4.418,7.162,22.2,8.0,6,1999,https://www.gem.wiki/Nigeria_LNG_Terminal
+Fredrikstad LNG Terminal,import,Norway,59.188,10.960,0.1,0,1,2011,https://www.gem.wiki/Fredrikstad_LNG_Terminal
+Hammerfest LNG Snohvit Terminal,export,Norway,70.685,23.590,4.2,0,1,2007,https://www.gem.wiki/Hammerfest_LNG_Snohvit_Terminal
+Kollsnes LNG Terminal,export,Norway,60.548,4.834,0.12,0,2,2003,https://www.gem.wiki/Kollsnes_LNG_Terminal
+Mosjoen LNG Terminal,import,Norway,65.837,13.187,0.4,0,1,2007,https://www.gem.wiki/Mosjoen_LNG_Terminal
+Risavika LNG Terminal,export,Norway,58.924,5.576,0.33,0,1,2010,https://www.gem.wiki/Risavika_LNG_Terminal
+Snurrevarden LNG Terminal,export,Norway,59.314,5.286,0.02,0,1,2003,https://www.gem.wiki/Snurrevarden_LNG_Terminal
+Oman Qalhat LNG Terminal,export,Oman,22.659,59.407,11.4,0,4,1999,https://www.gem.wiki/Oman_Qalhat_LNG_Terminal
+Engro Elengy FSRU,import,Pakistan,24.791,67.369,4.8,0,1,2015,https://www.gem.wiki/Engro_Elengy_FSRU
+GasPort FSRU,import,Pakistan,24.775,67.288,5.0,0,1,2017,https://www.gem.wiki/GasPort_FSRU
+Costa Norte LNG Terminal,import,Panama,9.357,-79.899,1.5,0,1,2018,https://www.gem.wiki/Costa_Norte_LNG_Terminal
+Papua New Guinea LNG Terminal,export,Papua New Guinea,-9.339,147.018,8.3,0,2,2014,https://www.gem.wiki/Papua_New_Guinea_LNG_Terminal
+Peru LNG Terminal,export,Peru,-13.245,-76.297,4.45,0,1,2010,https://www.gem.wiki/Peru_LNG_Terminal
+FGEN Batangas FSRU,import,Philippines,13.771,121.035,5.3,0,1,2023,https://www.gem.wiki/FGEN_Batangas_FSRU
+Filipinas LNG Gateway Project FSRU,import,Philippines,13.726,120.994,0,4.4,0,,https://www.gem.wiki/Filipinas_LNG_Gateway_Project_FSRU
+Pagbilao Grande Island LNG Terminal,import,Philippines,13.967,121.700,0,3.0,0,,https://www.gem.wiki/Pagbilao_Grande_Island_LNG_Terminal
+Philippines LNG Terminal,import,Philippines,13.754,121.041,5.0,0,1,2023,https://www.gem.wiki/Philippines_LNG_Terminal
+Świnoujście Polskie LNG Terminal,import,Poland,53.909,14.295,4.58,1.54,2,2015,https://www.gem.wiki/%c5%9awinouj%c5%9bcie_Polskie_LNG_Terminal
+Sines LNG Terminal,import,Portugal,37.942,-8.844,5.6,0,1,2004,https://www.gem.wiki/Sines_LNG_Terminal
+Qatar North Field LNG Terminal,export,Qatar,25.919,51.528,0,49.0,0,,https://www.gem.wiki/Qatar_North_Field_LNG_Terminal
+Qatargas 1 Ras Laffan LNG Terminal,export,Qatar,25.915,51.556,9.9,0,3,1996,https://www.gem.wiki/Qatargas_1_Ras_Laffan_LNG_Terminal
+Qatargas 2 Ras Laffan LNG Terminal,export,Qatar,25.911,51.559,31.2,0,4,2009,https://www.gem.wiki/Qatargas_2_Ras_Laffan_LNG_Terminal
+Rasgas LNG Terminal 1,export,Qatar,25.890,51.549,6.6,0,2,1999,https://www.gem.wiki/Rasgas_LNG_Terminal_1
+Rasgas LNG Terminal 2,export,Qatar,25.891,51.546,14.1,0,3,2004,https://www.gem.wiki/Rasgas_LNG_Terminal_2
+Rasgas LNG Terminal 3,export,Qatar,25.894,51.542,15.6,0,2,2009,https://www.gem.wiki/Rasgas_LNG_Terminal_3
+Congo FLNG Terminal,export,Republic of the Congo,-4.774,11.799,0.6,0,1,2024,https://www.gem.wiki/Congo_FLNG_Terminal
+Eni Congo FLNG II Terminal,export,Republic of the Congo,-4.590,11.470,0,2.4,0,,https://www.gem.wiki/Eni_Congo_FLNG_II_Terminal
+Arctic LNG 2 Terminal,export,Russia,71.085,73.677,0,13.2,0,,https://www.gem.wiki/Arctic_LNG_2_Terminal
+Portovaya LNG Terminal,export,Russia,60.523,28.130,1.5,0,2,2022,https://www.gem.wiki/Portovaya_LNG_Terminal
+Sakhalin II LNG Terminal,export,Russia,46.629,142.911,11.5,0,2,2009,https://www.gem.wiki/Sakhalin_II_LNG_Terminal
+Vysotsk LNG Terminal,export,Russia,60.604,28.550,1.5,0,2,2019,https://www.gem.wiki/Vysotsk_LNG_Terminal
+Yamal LNG Terminal,export,Russia,71.273,72.073,17.4,0,4,2017,https://www.gem.wiki/Yamal_LNG_Terminal
+Karmol Dakar FSRU,import,Senegal,14.689,-17.432,0,2.5,0,,https://www.gem.wiki/Karmol_Dakar_FSRU
+Singapore LNG Terminal,import,Singapore,1.236,103.671,11.0,0,3,2013,https://www.gem.wiki/Singapore_LNG_Terminal
+Boryeong LNG Terminal,import,South Korea,36.415,126.495,10.8,0,1,2016,https://www.gem.wiki/Boryeong_LNG_Terminal
+Gwangyang LNG Terminal,import,South Korea,34.889,127.781,7.1,0,1,2005,https://www.gem.wiki/Gwangyang_LNG_Terminal
+Incheon LNG Terminal,import,South Korea,37.351,126.602,54.5,0,1,1996,https://www.gem.wiki/Incheon_LNG_Terminal
+Jeju Aewol LNG Terminal,import,South Korea,33.470,126.323,1.1,0,1,2019,https://www.gem.wiki/Jeju_Aewol_LNG_Terminal
+KOGAS Dangjin LNG Terminal,import,South Korea,37.000,126.379,0,11.6,0,,https://www.gem.wiki/KOGAS_Dangjin_LNG_Terminal
+Northeast Asia LNG Hub Terminal,import,South Korea,34.872,127.713,0,0.0,0,,https://www.gem.wiki/Northeast_Asia_LNG_Hub_Terminal
+Pyeongtaek LNG Terminal,import,South Korea,37.006,126.784,41.0,0,1,1986,https://www.gem.wiki/Pyeongtaek_LNG_Terminal
+Samcheok LNG Terminal,import,South Korea,37.168,129.350,11.6,0,1,2014,https://www.gem.wiki/Samcheok_LNG_Terminal
+Tongyoung LNG Terminal,import,South Korea,34.947,128.425,26.5,0,1,2002,https://www.gem.wiki/Tongyoung_LNG_Terminal
+Ulsan LNG Terminal,import,South Korea,35.502,129.397,0,7.2,0,,https://www.gem.wiki/Ulsan_LNG_Terminal
+Barcelona LNG Terminal,import,Spain,41.339,2.158,12.6,0,1,1969,https://www.gem.wiki/Barcelona_LNG_Terminal
+Bilbao LNG Terminal,import,Spain,43.361,-3.095,5.1,0,1,2003,https://www.gem.wiki/Bilbao_LNG_Terminal
+Cartagena LNG Terminal (Spain),import,Spain,37.575,-0.960,8.7,0,1,1989,https://www.gem.wiki/Cartagena_LNG_Terminal_(Spain)
+El Musel LNG Terminal,import,Spain,43.570,-5.693,5.88,0,1,2023,https://www.gem.wiki/El_Musel_LNG_Terminal
+Huelva LNG Terminal,import,Spain,37.174,-6.911,8.7,0,1,1988,https://www.gem.wiki/Huelva_LNG_Terminal
+Mugardos LNG Terminal,import,Spain,43.461,-8.239,2.6,0,1,2007,https://www.gem.wiki/Mugardos_LNG_Terminal
+Sagunto LNG Terminal,import,Spain,39.633,-0.215,6.4,0,1,2006,https://www.gem.wiki/Sagunto_LNG_Terminal
+Brunnsviksholme LNG Terminal,import,Sweden,58.922,17.976,0.4,0,1,2011,https://www.gem.wiki/Brunnsviksholme_LNG_Terminal
+Lysekil LNG Terminal,import,Sweden,58.274,11.452,0.2,0,1,2014,https://www.gem.wiki/Lysekil_LNG_Terminal
+Taichung LNG Terminal,import,Taiwan,24.253,120.496,5.0,6.0,2,2009,https://www.gem.wiki/Taichung_LNG_Terminal
+Taoyuan LNG Terminal,import,Taiwan,25.046,121.061,0,3.0,0,,https://www.gem.wiki/Taoyuan_LNG_Terminal
+Yung-An LNG Terminal,import,Taiwan,22.809,120.205,10.5,0,1,1990,https://www.gem.wiki/Yung-An_LNG_Terminal
+Map Ta Phut LNG Terminal 1,import,Thailand,12.652,101.160,11.5,0,2,2011,https://www.gem.wiki/Map_Ta_Phut_LNG_Terminal_1
+Map Ta Phut LNG Terminal 2,import,Thailand,12.679,101.118,7.5,0,1,2023,https://www.gem.wiki/Map_Ta_Phut_LNG_Terminal_2
+Atlantic LNG Terminal,export,Trinidad and Tobago,10.181,-61.692,12.0,0,3,2002,https://www.gem.wiki/Atlantic_LNG_Terminal
+Kiyanly LNG Terminal,export,Turkmenistan,40.167,52.772,0.2,0,1,2009,https://www.gem.wiki/Kiyanly_LNG_Terminal
+Dörtyol FSRU,import,Türkiye,36.851,36.126,7.5,0,1,2018,https://www.gem.wiki/D%C3%B6rtyol_FSRU
+Etki FSRU,import,Türkiye,38.744,26.896,5.7,0,1,2016,https://www.gem.wiki/Etki_FSRU
+Gulf of Saros FSRU,import,Türkiye,40.637,26.657,5.6,0,1,2023,https://www.gem.wiki/Gulf_of_Saros_FSRU
+Izmir Aliaga LNG Terminal,import,Türkiye,38.822,26.914,10.7,0,1,2006,https://www.gem.wiki/Izmir_Aliaga_LNG_Terminal
+Marmara LNG Terminal,import,Türkiye,40.992,27.986,5.9,0,1,1994,https://www.gem.wiki/Marmara_LNG_Terminal
+Das Island LNG Terminal,export,United Arab Emirates,25.161,52.877,6.0,0,3,1977,https://www.gem.wiki/Das_Island_LNG_Terminal
+Jebel Ali FLNG Terminal,import,United Arab Emirates,25.031,55.067,6.0,0,1,2010,https://www.gem.wiki/Jebel_Ali_FLNG_Terminal
+Ruwais FSRU,import,United Arab Emirates,24.148,52.739,3.8,0,1,2016,https://www.gem.wiki/Ruwais_FSRU
+Dragon LNG Terminal,import,United Kingdom,51.705,-4.998,5.6,0,1,2009,https://www.gem.wiki/Dragon_LNG_Terminal
+Grain LNG Terminal,import,United Kingdom,51.451,0.680,14.3,8.7,1,2005,https://www.gem.wiki/Grain_LNG_Terminal
+Mowi LNG Terminal,import,United Kingdom,57.272,-5.727,0.22,0,1,2021,https://www.gem.wiki/Mowi_LNG_Terminal
+South Hook LNG Terminal,import,United Kingdom,51.715,-5.076,15.6,0,1,2009,https://www.gem.wiki/South_Hook_LNG_Terminal
+American LNG Hialeah Terminal,export,United States,25.809,-80.297,0.06,0,1,2016,https://www.gem.wiki/American_LNG_Hialeah_Terminal
+Calcasieu Pass LNG Terminal,export,United States,29.773,-93.334,12.06,0,18,2022,https://www.gem.wiki/Calcasieu_Pass_LNG_Terminal
+Cameron LNG Terminal,export,United States,30.035,-93.338,13.5,0,3,2019,https://www.gem.wiki/Cameron_LNG_Terminal
+Corpus Christi LNG Terminal,export,United States,27.914,-97.287,15.0,11.48,3,2018,https://www.gem.wiki/Corpus_Christi_LNG
+Cove Point LNG Export Terminal,export,United States,38.391,-76.405,5.25,0,1,2018,https://www.gem.wiki/Cove_Point_LNG_Terminal
+Cove Point LNG Import Terminal,import,United States,38.391,-76.405,13.7,0,1,1978,https://www.gem.wiki/Cove_Point_LNG_Terminal
+Elba Island LNG Terminal,export,United States,32.091,-81.000,2.5,0,10,2019,https://www.gem.wiki/Elba_Island_LNG_Terminal
+Everett Marine Terminal,import,United States,42.393,-71.064,5.1,0,1,1971,https://www.gem.wiki/Everett_Marine_Terminal
+Freeport LNG Terminal,export,United States,28.932,-95.317,15.0,1.5,3,2019,https://www.gem.wiki/Freeport_LNG_Terminal
+Golden Pass LNG Terminal,export,United States,29.761,-93.919,0,18.09,0,,https://www.gem.wiki/Golden_Pass_LNG
+Penuelas LNG Terminal,import,United States,18.059,-66.722,2.0,0,1,2000,https://www.gem.wiki/Penuelas_LNG_Terminal
+Plaquemines LNG Terminal,export,United States,29.600,-89.886,0,13.33,0,,https://www.gem.wiki/Plaquemines_LNG_Terminal
+Port Arthur LNG Terminal,export,United States,29.812,-93.960,0,13.5,0,,https://www.gem.wiki/Point_Arthur_LNG_Terminal
+Rio Grande LNG Terminal,export,United States,25.951,-97.411,0,17.61,0,,https://www.gem.wiki/Rio_Grande_LNG_Terminal
+Sabine Pass LNG Import Terminal,import,United States,29.754,-93.874,30.4,0,1,2008,https://www.gem.wiki/Sabine_Pass_LNG_Terminal
+Sabine Pass LNG Terminal,export,United States,29.754,-93.874,29.5,0,6,2016,https://www.gem.wiki/Sabine_Pass_LNG_Terminal
+San Juan LNG Terminal,import,United States,18.462,-66.111,1.1,0,1,2020,https://www.gem.wiki/San_Juan_LNG_Terminal
+Cai Mep LNG Terminal,import,Vietnam,10.383,107.117,0,3.0,0,,https://www.gem.wiki/Cai_Mep_LNG_Terminal
+Hai Lang LNG Terminal,import,Vietnam,16.994,107.115,0,1.5,0,,https://www.gem.wiki/Hai_Lang_LNG_Terminal
+Thi Vai LNG Terminal,import,Vietnam,10.527,107.026,1.0,0,1,2023,https://www.gem.wiki/Thi_Vai_LNG_Terminal
