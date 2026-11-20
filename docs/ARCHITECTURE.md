@@ -32,8 +32,8 @@ The number at the start of each script's name sets the order. Later files may us
 | `83-cams.js` | Live cameras and the viewer in their card |
 | `85-more.js` | Deep space antennas, US weather warnings, recent launches, most read |
 | `86-open.js` | The opening sequence and loading read-out |
-| `87-music.js` | Tour music, generated with Web Audio |
-| `88-tour.js` | Tour mode: route, camera, captions, controls |
+| `87-music.js` | Tour music, generated with Web Audio, and the steps that get it ready ahead of time |
+| `88-tour.js` | Tour mode: route, camera, captions, controls, and the hand-over from the turning globe |
 | `90-main.js` | Wiring: layer toggles, pointer, the feed scheduler, staged start-up, the frame loop |
 
 ## How a feed becomes markers
@@ -57,10 +57,23 @@ A click on the globe is tested against markers in priority order (`pick`), then 
 
 ## The globe
 
-- The surface is a shaded sphere with night lights on the dark side; land is a field of dots placed from a Natural Earth land mask, sized by elevation.
+- The surface is a shaded sphere with night lights on the dark side; land is a field of dots placed from a Natural Earth land mask, sized by elevation. In the opening the dots fly in from north to south, each in its own time; they have all landed only when the count that drives them reaches `BUILT`, which is where it is left.
+- Both the elevation image and the land mask stop short of the South Pole in their sources. `tools/fill-pole.py` fills the last few degrees in the two files themselves, so the page needs no special case.
 - The sun's position is computed from the clock, so day and night on the globe are real.
 - Satellites are propagated in a web worker and interpolated between samples on the GPU.
 - Rendering quality steps down by itself on slow machines: fewer pixels, fewer wind streaks, no glass blur.
+
+## Starting the tour
+
+The press that starts the tour does almost nothing, because everything slow has been done before it arrives.
+
+- **Music.** Working out the echo, starting the browser's sound engine and handing the echo to it each take tens of milliseconds. `musicWarm` does them one at a time in idle moments: the samples as soon as the globe has opened, the engine (made asleep) once the visitor has clicked or pressed anything, since browsers allow no sound before that. Pressing down on a tour button finishes whatever is left before the click itself arrives. The echo is kept and shared by every later tour.
+- **Camera.** The frame loop measures how fast the globe is turning (`trackSpin`). The opening swing begins on the press with that speed and builds from it, so the globe never stops to begin, and the tour's clock starts with its first frame, however long the press took.
+- **Interface.** The panels fade out together in a third of a second and are then hidden outright, because a glass panel that has only faded still costs its blur on every frame.
+
+- **The press itself.** A ring of light leaves the button and a wave of light crosses the planet (`tourLaunch`), both drawn by the graphics card alone, so the click is answered before anything has had time to move.
+
+`node tests/smoke.js ok tourwarm` reports how long the press and the click each hold the page up, and `ok tourprof` plays the first seconds on a pretend 60 Hz clock and reports any jolt in pixels.
 
 ## Built-in datasets
 

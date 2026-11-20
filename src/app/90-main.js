@@ -300,15 +300,15 @@ function stepIntro(now) {
     /* the dots take three and a half seconds to stream in and land, at a steady pace (the count runs on past 1 so the flash
        of the last to land has time to fade); the rest of the sequence then follows as it always has */
     const flow = k => k * k * (3 - 2 * k);
-    introU.build.value = 1.3 * flow(span(t, 0, 5.2));
-    introU.ghost.forEach((g, i) => { g.value = 1.3 * flow(span(t - 0.06 * (i + 1), 0, 5.2)); });
+    introU.build.value = BUILT * flow(span(t, 0, 5.2));
+    introU.ghost.forEach((g, i) => { g.value = BUILT * flow(span(t - 0.06 * (i + 1), 0, 5.2)); });
     introU.spark.value = 1 - span(t, 4.9, 5.4);
     introU.reveal.value = 1.2 * easeIO(span(t, 2.2, 4.6));
     introU.glow.value = span(t, 3.2, 4.8);
     introU.lines = span(t, 3.5, 4.6);
     introU.wire.value = 1 - span(t, 4.3, 5.4);
     if (t >= 5.4) {
-      intro.done = true; introU.build.value = 1; introU.reveal.value = 1.3; introU.glow.value = 1; introU.lines = 1; introU.wire.value = 0; introU.spark.value = 0;
+      intro.done = true; introU.build.value = BUILT; introU.reveal.value = 1.3; introU.glow.value = 1; introU.lines = 1; introU.wire.value = 0; introU.spark.value = 0;
       if (introU.tails) { for (const q of introU.tails) { scene.remove(q); q.material.dispose(); } introU.tails = null; }
       maybeEnter();
     }
@@ -402,7 +402,7 @@ function frame(now) {
   const dist = camera.position.length();
   controls.rotateSpeed = clamp(0.55 * (dist - 1) / (view.fit - 1), 0.03, 0.9);
   controls.update();
-  if (tour.on) tourLook();
+  if (tour.on) tourLook(); else trackSpin(now);
   const zk = view.zoomK = clamp((view.fit - dist) / (view.fit - controls.minDistance), 0, 1);
   U.uZoom.value = clamp(Math.pow(view.fit / dist, 0.4), 0.7, 1.9) * (view.phone ? 0.85 : 1);
   dotsU.uFade.value = 0.85 - 0.6 * zk;
@@ -463,6 +463,14 @@ if (location.hash === '#test') Object.assign(window.__ern, {
   camFirst: place => { const it = layers.cams.items.find(x => x.place.endsWith(place)); if (it) select(it); return it ? it.title : null; },
   camState: () => JSON.stringify({ it: !!cam.it, mode: cam.mode, state: cam.state, hls: !!cam.hls, timer: !!cam.timer }),
   look(lat, lon) { ll(lat, lon, camera.position.length(), camera.position); controls.update(); },
+  /* how many land dots are not sitting on the globe, worked out the way the shader does it (see DOTS_VS) */
+  dots() {
+    let pts = null; scene.traverse(o => { if (o.isPoints && o.material.uniforms && o.material.uniforms.uBuild === introU.build) pts = o; });
+    if (!pts) return null;
+    const a = pts.geometry.attributes.position.array, b = introU.build.value, fr = x => x - Math.floor(x); let off = 0, worst = 0, south = 0;
+    for (let i = 0; i < a.length; i += 3) { const x = a[i], y = a[i + 1], z = a[i + 2], r = Math.hypot(x, y, z), h = fr(Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453), ku = b * 2 - ((1 - y / r) * 0.5 + h * 0.5), far = Math.pow(1 - clamp(ku, 0, 1), 2.4); if (far > 1e-4) { off++; worst = Math.max(worst, far); if (y < 0) south++; } }
+    return { dots: a.length / 3, offTheGround: off, inTheSouth: south, farthest: +worst.toFixed(3), build: b };
+  },
   openExit(t) { if (!boot.entered) enter(); intro.freeze = -Math.max(t, 0.001); intro.last = 0; setTimeout(() => document.getAnimations().forEach(a => { try { a.pause(); a.currentTime = t * 1000; } catch (e) {} }), 120); }
 });
 runBoot();

@@ -17,8 +17,12 @@ const U = {
   uZoom: { value: 1 }, uScale: { value: 1000 }
 };
 /* the opening sequence drives these; at rest they leave the globe exactly as it normally looks */
-const introU = { build: { value: 1 }, reveal: { value: 1.3 }, wire: { value: 0 }, glow: { value: 1 }, pulse: { value: 1 }, pulseGain: { value: 1 }, pulseDir: { value: new THREE.Vector3(0, 0, 1) }, lines: 1,
-  spark: { value: 0 }, ghost: [{ value: 1 }, { value: 1 }, { value: 1 }], tails: null,
+/* How far the land dots have got in assembling the planet: 0 is none, and every dot has landed only at BUILT. The dots land from
+   north to south and each in its own time, so the last ones in the far south need a count well past 1 (1.25, by the arithmetic in
+   DOTS_VS); anything less leaves them hanging off the bottom of the globe. */
+const BUILT = 1.3;
+const introU = { build: { value: BUILT }, reveal: { value: 1.3 }, wire: { value: 0 }, glow: { value: 1 }, pulse: { value: 1 }, pulseGain: { value: 1 }, pulseDir: { value: new THREE.Vector3(0, 0, 1) }, lines: 1,
+  spark: { value: 0 }, ghost: [{ value: BUILT }, { value: BUILT }, { value: BUILT }], tails: null,
   keep: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] };      /* parts of the screen the flying dots thin out over, because there are words there: the read-out, the list of feeds and the heading */
 const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat); blank.needsUpdate = true;
 
@@ -80,7 +84,8 @@ const globe = new THREE.Mesh(
       '  vec3 h=normalize(uSun+v); float nh=max(dot(n,h),0.0);',
       '  float glint=(pow(nh,90.0)*0.5+pow(nh,10.0)*0.06)*(1.0-land)*step(0.0,lamN);',
       '  float g=mix(mix(onight,lnight,land),mix(oday,lday,land),day)+glint*day;',
-      '  float c=smoothstep(0.18,0.9,texture2D(tClouds,vUv).r)*uClouds;',
+      /* a flat map of the clouds is squeezed to a point at each pole, where it turns into rays; the clouds thin out over the last few degrees instead */
+      '  float c=smoothstep(0.18,0.9,texture2D(tClouds,vUv).r)*uClouds*smoothstep(0.9990,0.9925,abs(n.y));',
       '  float lights=pow(max(texture2D(tLights,vUv).r-0.03,0.0),1.15)*(1.0-day)*uLights*(1.0-c*0.7);',
       '  g=mix(g,mix(0.07,0.36+0.26*lam,day),c*mix(0.34,0.6,day));',
       '  float fres=pow(1.0-max(dot(n,v),0.0),3.2);',

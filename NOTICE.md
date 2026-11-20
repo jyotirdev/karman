@@ -24,9 +24,9 @@ This is a good-faith summary, not legal advice. If you plan to reuse any of this
 
 | File | Origin | Terms |
 |---|---|---|
-| `assets/land.b64`, `assets/borders.b64` | [Natural Earth](https://www.naturalearthdata.com/) land and country boundaries | Public domain |
+| `assets/land.b64`, `assets/borders.b64` | [Natural Earth](https://www.naturalearthdata.com/) land and country boundaries. The land outline stops near 85° S; the rows south of 84° S follow the filled elevation image | Public domain |
 | `assets/lights.jpg` | NASA Earth Observatory, [Black Marble](https://earthobservatory.nasa.gov/features/NightLights) night lights | NASA imagery, credit NASA Earth Observatory |
-| `assets/surf.jpg` | NASA Earth Observatory elevation data | NASA imagery, credit NASA Earth Observatory |
+| `assets/surf.jpg` | NASA Earth Observatory elevation data. The image is blank south of about 84° S; those rows are filled in from the ice sheet around them by `tools/fill-pole.py`, and nothing else in it is altered | NASA imagery, credit NASA Earth Observatory |
 | `assets/plates.b64` | Plate boundaries from Peter Bird, "An updated digital model of plate boundaries", *Geochemistry Geophysics Geosystems* 4(3), 2003, as converted by [Hugo Ahlenius, Nordpil](https://github.com/fraxen/tectonicplates) | See that repository |
 | `assets/countries.txt` | ISO 3166 country codes and ISO 4217 currency codes | Factual codes |
 
@@ -42,6 +42,7 @@ Nothing below is stored in this repository. The visitor's browser fetches it fro
 | [satellite.js](https://github.com/shashwatak/satellite-js) 5.0.0 | SGP4 orbit propagation | MIT |
 | [hls.js](https://github.com/video-dev/hls.js) 1.5.20 | Playing live camera streams; fetched only when one is opened | Apache-2.0 |
 | [Geist and Geist Mono](https://github.com/vercel/geist-font) | Typefaces, from Google Fonts | SIL Open Font License 1.1 |
+| [Unbounded](https://github.com/googlefonts/unbounded), by The Unbounded Project Authors | The Kármán wordmark: the outlines of six letters of Unbounded Black, drawn into the page and into `docs/brand/`. No font file is shipped or downloaded | SIL Open Font License 1.1 |
 
 ### Live data
 

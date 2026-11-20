@@ -80,9 +80,15 @@ small { font-size: 11.5px; color: var(--text-3); }
 .topbar { position: absolute; inset: 0 0 auto 0; height: var(--top); padding: 0 18px; display: grid; grid-template-columns: 1fr minmax(0, 420px) 1fr; align-items: center; gap: 16px; pointer-events: none; }
 .topbar > * { pointer-events: auto; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand h1 { font-size: 12.5px; white-space: nowrap; }
+.brand h1 { font-size: 12.5px; }
 /* the name, wherever it appears: capitals set wide, so the two accents ring like marks on a dial */
-.wordmark { font-family: var(--font); font-weight: 600; text-transform: uppercase; letter-spacing: .3em; margin-right: -.3em; color: var(--text); font-feature-settings: "case" 1; }
+/* The name is drawn, not typed: the letters of Unbounded Black as outlines, the same on every screen and with no font to wait
+   for. Its box leaves the height of the accents free above the capitals and the same below, so centring the box centres the
+   capitals. Sized by the font size of whatever holds it. */
+.sprite { position: absolute; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wordmark { display: block; flex: none; color: var(--text); line-height: 0; }
+.wordmark svg { display: block; height: 1.36em; width: auto; aspect-ratio: 808.4 / 161.9; fill: currentColor; }
 .mark { flex: none; display: block; }
 .clock { justify-self: end; display: flex; align-items: baseline; gap: 10px; color: var(--text-2); font-size: 12px; white-space: nowrap; }
 .clock .mono { color: var(--text); font-size: 13px; }
@@ -249,8 +255,10 @@ button.tile:hover { background: var(--fill-hover); }
 @keyframes landed { from { background-color: rgba(255, 255, 255, .16); } to { background-color: transparent; } }
 @keyframes bootShim { to { background-position: -200% 0; } }
 .boot-top { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; white-space: nowrap; animation: hudIn .9s .1s both; }
-.boot-top h2 { font-size: 15px; letter-spacing: .34em; margin-right: -.34em; line-height: 1.3; }
-.boot-top p { color: var(--text-2); font-size: 12.5px; margin-top: 3px; }
+/* the name as wide as the line beneath it, which sits close under the capitals */
+.boot-top .mark { width: 46px; height: 46px; }
+.boot-top .wordmark svg { width: 0; min-width: 100%; height: auto; }
+.boot-top p { color: var(--text-2); font-size: 12.5px; margin-top: -2px; }
 .boot-col { display: none; }      /* the full list of feeds is kept for the code that tracks them, but no longer shown */
 .boot-col.left { left: max(28px, 4.5vw); } .boot-col.right { right: max(28px, 4.5vw); }
 .boot-col li, .boot-log li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 9px; align-items: center; height: 25px; padding: 0 6px; border-radius: 6px; font-size: 12.5px; color: var(--text-3);
@@ -501,7 +509,7 @@ h3 { padding: 16px 8px 6px; }
   .legend { top: var(--top); left: 8px; right: 8px; transform: none; width: auto; max-width: none; }
   #pl-vol { display: none; }
   .booting .dock { transform: translateY(14px); }
-  .boot-top { top: 14px; left: 14px; transform: none; } .boot-top p { display: none; } .boot-top svg { width: 24px; height: 24px; } .boot-top h2 { font-size: 13px; }
+  .boot-top { top: 14px; left: 14px; transform: none; gap: 9px; } .boot-top p { display: none; } .boot-top .mark { width: 24px; height: 24px; } .boot-top .wordmark svg { width: auto; min-width: 0; height: 17px; }
   .boot-foot { bottom: calc(var(--bar) + 12px); } .boot-log li:nth-child(n+4) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -578,17 +586,45 @@ h3 { padding: 16px 8px 6px; }
 @keyframes bootFlash { 0% { opacity: 0; scale: .42; } 12% { opacity: 1; } 100% { opacity: 0; scale: 1.5; } }
 
 /* ---------- tour: the globe flies itself; everything else steps aside ---------- */
-.tour-start { display: inline-flex; align-items: center; gap: 6px; height: 26px; margin-left: 6px; padding: 0 12px 0 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--fill); font-size: 12.5px; font-weight: 500; color: var(--text); white-space: nowrap; transition: background .15s, border-color .15s; }
-.tour-start:hover { background: var(--fill-hover); border-color: rgba(255, 255, 255, .3); }
+/* The way into the tour is one bright play button wherever it appears: beside the name, in the view controls, and on phones.
+   It answers the pointer (a halo, and a ring that keeps leaving it), gives under the press, and on the click sends a ring of
+   light out across the screen while a wave of light crosses the planet (tourLaunch, in 88-tour.js). */
+.tour-start { display: inline-flex; align-items: center; gap: 7px; height: 28px; margin-left: 8px; padding: 0 13px 0 4px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--fill); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); font-size: 12.5px; font-weight: 500; color: var(--text); white-space: nowrap; transition: background .2s, border-color .2s, transform .12s; }
+.tour-start:hover { background: var(--fill-hover); border-color: rgba(255, 255, 255, .34); }
+.tour-start:active { transform: scale(.98); }
+.tour-disc { position: relative; flex: none; display: block; width: 18px; height: 18px; border-radius: 50%; color: #0a0a0c; background: linear-gradient(180deg, #fff, #dadae0); box-shadow: 0 0 0 0 rgba(255, 255, 255, .14), 0 1px 2px rgba(0, 0, 0, .5); transition: transform .22s cubic-bezier(.3, 1.5, .5, 1), box-shadow .25s ease; }
+/* The triangle is drawn in the disc's own 20 by 20 square: an even-sided triangle with its centre of mass exactly on the centre
+   of the disc, which is where a play arrow looks centred (centring its outline instead would leave it looking pushed left).
+   In the two pills the disc sits the same distance from the left end as from the top and bottom, border included. */
+.tour-disc svg { display: block; width: 100%; height: 100%; }
+.tour-disc::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .75); opacity: 0; pointer-events: none; }
+[data-act="tour"]:hover .tour-disc, [data-act="tour"]:focus-visible .tour-disc { transform: scale(1.08); box-shadow: 0 0 0 4px rgba(255, 255, 255, .14), 0 1px 2px rgba(0, 0, 0, .5); }
+[data-act="tour"]:active .tour-disc { transform: scale(.9); transition-duration: .08s; }
+@keyframes tourPing { from { transform: scale(1); opacity: .75; } to { transform: scale(1.8); opacity: 0; } }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) { [data-act="tour"]:hover .tour-disc::after { animation: tourPing 1.5s cubic-bezier(.2, .6, .3, 1) infinite; } }
+.viewctl .tour-go .tour-disc { width: 20px; height: 20px; }
+.viewctl .tour-go:hover { background: none; }
+/* the ring and the glow that leave the button on the click; placed and set going from the script */
+.tour-burst { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 30; pointer-events: none; }
+.tour-burst i { position: absolute; left: -34vmax; top: -34vmax; width: 68vmax; height: 68vmax; border-radius: 50%; opacity: 0; }
+.tour-burst i:first-child { border: 2px solid rgba(255, 255, 255, .8); }
+.tour-burst i:last-child { background: radial-gradient(closest-side, rgba(214, 228, 255, .3), rgba(186, 208, 255, .1) 42%, rgba(160, 190, 255, 0) 70%); }
 .tour-pill { display: none; }
-.tour-pill, #app.touring .legend, #app.tour-out .legend, #app.tour-out .player { transition: opacity .5s ease; }
-#app.touring .dock, #app.touring .inspector, #app.touring .search, #app.touring .clock, #app.touring .brand, #app.touring .statusbar,
-#app.touring .legend, #app.touring .player, #app.touring .tour-pill, #app.touring .tip { opacity: 0; pointer-events: none; }
+.tour-pill, #app.tour-out .legend, #app.tour-out .player { transition: opacity .5s ease; }
+/* The interface leaves quickly and all together, and is then not drawn at all for as long as the tour runs: a glass panel that
+   has only faded out still costs the graphics card its blur on every frame, a hidden one costs nothing. It comes back at its
+   usual pace. */
+#app.touring .dock, #app.touring .inspector, #app.touring .search, #app.touring .clock, #app.touring .brand, #app.touring .statusbar, #app.touring .viewctl,
+#app.touring .legend, #app.touring .player, #app.touring .tour-pill, #app.touring .tip { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity .34s ease, transform .34s cubic-bezier(.4, 0, 1, 1), visibility 0s linear .34s; }
 #app.touring .dock { transform: translateX(-14px); } #app.touring .inspector { transform: translateX(14px); }
-#app.touring .viewctl { opacity: 0; pointer-events: none; transform: translate(-50%, 10px); }
-#app.touring .player { transition: opacity .5s ease; }
-/* place names and marks on the globe keep clear of the words in the lower left */
-#app.touring #overlay { -webkit-mask-image: radial-gradient(78% 90% at 0% 100%, transparent 0 52%, #000 76%); mask-image: radial-gradient(78% 90% at 0% 100%, transparent 0 52%, #000 76%); }
+#app.touring .viewctl { transform: translate(-50%, 10px); }
+/* Place names and marks on the globe keep clear of the words in the lower left. They clear away from that corner outward as
+   the tour begins and come back the same way; a browser that cannot animate this switches at once, as before. */
+@property --tour-m0 { syntax: '<percentage>'; inherits: false; initial-value: -30%; }
+@property --tour-m1 { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+#overlay { --tour-m0: -30%; --tour-m1: 0%; }
+#app.touring #overlay, #app.tour-out #overlay { -webkit-mask-image: radial-gradient(78% 90% at 0% 100%, transparent 0 var(--tour-m0), #000 var(--tour-m1)); mask-image: radial-gradient(78% 90% at 0% 100%, transparent 0 var(--tour-m0), #000 var(--tour-m1)); transition: --tour-m0 .7s ease, --tour-m1 .7s ease; }
+#app.touring #overlay { --tour-m0: 52%; --tour-m1: 76%; }
 
 /* Everything in the tour is sized in em from one number that grows with the screen, so it reads from a sofa as well as from a
    desk. Three kinds of text only: labels (small, dim), words (normal) and figures (monospaced, bright). */
@@ -602,14 +638,13 @@ h3 { padding: 16px 8px 6px; }
 
 /* top line: what this is on the left, where the camera is on the right */
 .tour-top { position: absolute; top: var(--ty); left: var(--tx); right: var(--tx); height: 2.2em; display: flex; align-items: center; gap: .8em; color: var(--text-2); white-space: nowrap; }
-.tour-top svg { width: 1.55em; height: 1.55em; flex: none; }
+.tour-top > svg { width: 1.55em; height: 1.55em; flex: none; }
 .tour-top > b { font-size: .92em; color: var(--text); margin-right: .2em; }
-.tour-live { display: inline-flex; align-items: center; gap: .55em; margin-left: .5em; padding: .18em .8em .18em .7em; border-radius: 999px; border: 1px solid var(--line-strong); font-size: .9em; font-weight: 500; color: var(--text); }
-.tour-live i { width: .5em; height: .5em; border-radius: 50%; background: var(--bad); box-shadow: 0 0 .6em rgba(255, 69, 58, .8); animation: tour-blink 1.8s ease-in-out infinite; }
-.tour.held .tour-live span::after { content: ", holding while you read"; }
-.tour.paused .tour-live i { background: var(--text-3); box-shadow: none; animation: none; }
-.tour.paused .tour-live span::after { content: ", paused"; }
-@keyframes tour-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+/* nothing sits beside the name while the tour runs; a word appears there only when it is waiting */
+.tour-state { margin-left: .3em; padding-left: 1em; border-left: 1px solid var(--line-strong); font-size: .9em; line-height: 1.5; color: var(--text-2); opacity: 0; transition: opacity .3s ease; }
+.tour.held .tour-state, .tour.paused .tour-state { opacity: 1; }
+.tour.held .tour-state::after { content: "Holding while you read"; }
+.tour.paused .tour-state::after { content: "Paused"; }
 .tour-tele { margin: 0 0 0 auto; display: flex; gap: 1.9em; min-width: 0; }
 .tour-tele > div { display: flex; align-items: baseline; gap: .6em; }
 .tour-tele dt { font-size: .86em; color: var(--text-3); }
@@ -711,13 +746,16 @@ h3 { padding: 16px 8px 6px; }
 @media (max-height: 600px) and (min-width: 861px) { .tour-text { display: none; } .tour-cap { bottom: 62px; } .tour-cats li:nth-child(n+9) { display: none; } }
 @media (max-width: 860px) {
   .brand .tour-start { display: none; }
-  .tour-pill { display: inline-flex; align-items: center; gap: 6px; position: absolute; right: 12px; bottom: calc(var(--bar) + 40% + 18px); z-index: 2; height: 34px; padding: 0 14px 0 11px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+  .tour-pill { display: inline-flex; align-items: center; gap: 8px; position: absolute; right: 12px; bottom: calc(var(--bar) + 40% + 18px); z-index: 2; height: 36px; padding: 0 15px 0 6px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+  .tour-pill .tour-disc { width: 22px; height: 22px; }
   #player:not([hidden]) ~ .tour-pill { bottom: calc(var(--bar) + 40% + 72px); }
   .booting .tour-pill { opacity: 0; pointer-events: none; }
   #app.touring .dock { transform: translateY(14px); }
   .tour, .tour-ring { font-size: 13px; }
   .tour { --tx: 18px; --ty: 14px; }
-  #app.touring #overlay { -webkit-mask-image: linear-gradient(180deg, #000 0 56%, transparent 65%); mask-image: linear-gradient(180deg, #000 0 56%, transparent 65%); }
+  #overlay { --tour-m0: 100%; --tour-m1: 130%; }
+  #app.touring #overlay, #app.tour-out #overlay { -webkit-mask-image: linear-gradient(180deg, #000 0 var(--tour-m0), transparent var(--tour-m1)); mask-image: linear-gradient(180deg, #000 0 var(--tour-m0), transparent var(--tour-m1)); }
+  #app.touring #overlay { --tour-m0: 56%; --tour-m1: 65%; }
   .tour-shade { background: linear-gradient(0deg, rgba(4, 4, 5, .96) 0%, rgba(4, 4, 5, .84) 34%, rgba(4, 4, 5, 0) 64%), linear-gradient(180deg, rgba(4, 4, 5, .6), rgba(4, 4, 5, 0) 14%); }
   .tour-top > b { font-size: 12px; }
   .tour-side, .tour-tele { display: none; }

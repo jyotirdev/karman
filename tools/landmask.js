@@ -1,4 +1,6 @@
 // Rasterises Natural Earth 50m land into a bit mask on an equal-area dot grid.
+// The outline it reads stops near 85 S, short of the South Pole, so run tools/fill-pole.py afterwards: it completes the rows
+// south of 84 S from the elevation image.
 const topo = require('topojson-client');
 const land = require('world-atlas/land-50m.json');
 const STEP = 0.6, COLS = 600;

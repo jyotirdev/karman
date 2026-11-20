@@ -175,6 +175,7 @@ function staticOff(fade) {
     const t = tuner.ctx.currentTime, f = fade == null ? 0.45 : fade;
     tuner.gain.gain.cancelScheduledValues(t); tuner.gain.gain.setValueAtTime(tuner.gain.gain.value, t); tuner.gain.gain.linearRampToValueAtTime(0, t + f);
     tuner.src.stop(t + f + 0.05); tuner.lfo.stop(t + f + 0.05);
+    tuner.quietAt = performance.now() + (f + 0.4) * 1000;      /* the sound engine must not be put to sleep (87-music.js) before this has died away */
   } catch (e) {}
   tuner.src = tuner.gain = tuner.lfo = null;
 }

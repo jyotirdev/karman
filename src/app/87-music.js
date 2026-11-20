@@ -9,28 +9,49 @@
    Each flight between two events gets a rush of air that passes from one ear to the other, with a note that bends upward
    and falls as it goes by, and each arrival a soft, low thud under the chime.
    ============================================================ */
-const music = { M: null, timer: 0, level: 0.62 };
+const music = { M: null, timer: 0, level: 0.62, rack: null, rest: 0, echo: null };
 const mHz = m => 440 * Math.pow(2, (m - 69) / 12);
 /* D minor, voiced wide: low root and fifth, then the colour notes higher up */
 const M_CHORDS = [[38, 45, 53, 57, 64], [34, 46, 53, 57, 62], [41, 48, 55, 57, 64], [36, 43, 52, 55, 62], [38, 45, 53, 60, 64], [34, 46, 50, 57, 65], [33, 45, 52, 55, 60], [36, 43, 52, 55, 62]];
 const M_BELLS = [74, 77, 79, 81, 84, 86, 89];
 
-/* the echo: a few seconds of noise that dies away, different in each ear */
+/* the echo: a few seconds of noise that dies away, different in each ear. The dying away is worked out once every hundred
+   or so samples and drawn straight in between, which sounds the same and takes a fraction of the time. The samples are plain
+   numbers until a sound engine wants them, so they can be worked out before there is one (musicWarm). */
+function musicEcho(rate, secs) {
+  const n = Math.floor(rate * secs), STEP = 128, slope = 0.5 / n, ears = [new Float32Array(n), new Float32Array(n)];
+  for (const d of ears) {
+    let low = 0;
+    for (let i0 = 0; i0 < n; i0 += STEP) {
+      const i1 = Math.min(n, i0 + STEP), e0 = Math.pow(1 - i0 / n, 3.4), de = (Math.pow(1 - i1 / n, 3.4) - e0) / (i1 - i0);
+      for (let i = i0; i < i1; i++) { low += (Math.random() * 2 - 1 - low) * (0.6 - slope * i); d[i] = low * (e0 + de * (i - i0)); }
+    }
+    for (let i = 0; i < 400 && i < n; i++) d[i] *= i / 400;
+  }
+  return { rate, secs, ears };
+}
 function musicImpulse(ctx, secs) {
-  const n = Math.floor(ctx.sampleRate * secs), buf = ctx.createBuffer(2, n, ctx.sampleRate);
-  for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); let low = 0; for (let i = 0; i < n; i++) { const k = i / n, w = Math.random() * 2 - 1; low += (w - low) * (0.6 - 0.5 * k); d[i] = low * Math.pow(1 - k, 3.4) * Math.min(1, i / 400); } }
+  const made = music.echo && music.echo.rate === ctx.sampleRate && music.echo.secs === secs ? music.echo : musicEcho(ctx.sampleRate, secs), buf = ctx.createBuffer(2, made.ears[0].length, ctx.sampleRate);
+  made.ears.forEach((d, c) => { if (buf.copyToChannel) buf.copyToChannel(d, c); else buf.getChannelData(c).set(d); });
   return buf;
 }
-function musicBuild(ctx) {
-  const t = ctx.currentTime, M = { ctx, live: new Set(), chordAt: t + 0.05, bellAt: t + 5, step: 0, chord: M_CHORDS[0] };
-  const out = M.out = ctx.createGain(), comp = ctx.createDynamicsCompressor(), tone = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), verb = ctx.createConvolver(), wet = ctx.createGain(), dry = ctx.createGain(), bus = M.bus = ctx.createGain();
+/* The echo and the noise for the rush of air are the slow things to make, so they are made once for each sound engine and
+   kept: every tour after the first starts with them already there, and so does the first if there was a quiet moment to
+   make them in beforehand (musicWarm, below). */
+function musicRack(ctx) {
+  const verb = ctx.createConvolver(); verb.buffer = musicImpulse(ctx, 6.5);
+  const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2), ctx.sampleRate), nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  return { ctx, verb, noise };
+}
+function musicBuild(ctx, rack) {
+  rack = rack || musicRack(ctx);
+  const t = ctx.currentTime, M = { ctx, rack, live: new Set(), chordAt: t + 0.05, bellAt: t + 5, step: 0, chord: M_CHORDS[0], noise: rack.noise };
+  const out = M.out = ctx.createGain(), comp = ctx.createDynamicsCompressor(), tone = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), verb = rack.verb, send = M.send = ctx.createGain(), wet = M.wet = ctx.createGain(), dry = ctx.createGain(), bus = M.bus = ctx.createGain();
   out.gain.value = 0;
   comp.threshold.value = -25; comp.knee.value = 20; comp.ratio.value = 4; comp.attack.value = 0.04; comp.release.value = 0.6;
   tone.type = 'lowpass'; tone.frequency.value = 5600; tone.Q.value = 0.3; hp.type = 'highpass'; hp.frequency.value = 36;
-  verb.buffer = musicImpulse(ctx, 6.5); wet.gain.value = 0.7; dry.gain.value = 0.5;
-  bus.connect(dry); bus.connect(verb); verb.connect(wet); dry.connect(tone); wet.connect(tone); tone.connect(hp); hp.connect(comp); comp.connect(out); out.connect(ctx.destination);
-  /* two seconds of plain noise, for the rush of air on each flight */
-  const nz = M.noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2), ctx.sampleRate), nd = nz.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  wet.gain.value = 0.7; dry.gain.value = 0.5;
+  bus.connect(dry); bus.connect(send); send.connect(verb); verb.connect(wet); dry.connect(tone); wet.connect(tone); tone.connect(hp); hp.connect(comp); comp.connect(out); out.connect(ctx.destination);
   /* the drone: root, fifth and octave, each swelling and sinking at its own slow pace */
   for (const [m, vol, rate] of [[38, 0.05, 0.043], [45, 0.036, 0.061], [50, 0.034, 0.037]]) {
     const o = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
@@ -129,22 +150,91 @@ function musicStart() {
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   try {
     const ctx = tuner.ctx || (tuner.ctx = new AC());
+    clearTimeout(music.rest);
     if (ctx.state === 'suspended') {                    /* browsers hold sound back until the page has been clicked or a key pressed */
       ctx.resume().catch(() => {});
       const kick = () => { ctx.resume().catch(() => {}); window.removeEventListener('pointerdown', kick, true); window.removeEventListener('keydown', kick, true); };
       window.addEventListener('pointerdown', kick, true); window.addEventListener('keydown', kick, true);
     }
-    const M = music.M = musicBuild(ctx), t = ctx.currentTime;
+    if (!music.rack || music.rack.ctx !== ctx) { music.rack = musicRack(ctx); music.echo = null; }
+    const M = music.M = musicBuild(ctx, music.rack), t = ctx.currentTime;
     /* no slow fade in: the sound is there within half a second of the press */
     M.out.gain.setValueAtTime(0, t); M.out.gain.linearRampToValueAtTime(music.level, t + 0.45);
     musicFill(M, t + 4); musicOpen(M, t + 0.04);
     music.timer = setInterval(() => { const N = music.M; if (N && N.ctx.state === 'running') { if (N.chordAt < N.ctx.currentTime - 1) { N.chordAt = N.ctx.currentTime + 0.1; N.bellAt = Math.max(N.bellAt, N.ctx.currentTime + 2); } musicFill(N, N.ctx.currentTime + 4); } }, 1000);
   } catch (e) { music.M = null; }
 }
+/* The music fades, and so does what it sends into the echo, which is shared with the next tour. The notes stop once
+   nothing can be heard; the wiring stays a few seconds longer, silent, while the echo rings itself out, so that none of
+   this tour is left in it to be heard at the start of the next. Then the engine goes back to sleep. */
+function musicFade(M, t) { for (const g of [M.out.gain, M.send.gain]) { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 1.8); } }
+function musicHush(M) { for (const o of Array.from(M.live)) { try { o.onended = null; o.stop(); } catch (e) {} } }
+function musicUnplug(M) {
+  for (const cut of [() => M.bus.disconnect(), () => M.send.disconnect(), () => M.rack.verb.disconnect(M.wet), () => M.out.disconnect()]) { try { cut(); } catch (e) {} }
+  const N = music.M; if (N && N !== M && N.rack === M.rack) { try { N.rack.verb.connect(N.wet); } catch (e) {} }      /* a tour that began in the meantime keeps its echo, whatever an old browser made of the line above */
+}
 function musicStop() {
   const M = music.M; if (!M) return; music.M = null; clearInterval(music.timer);
-  try { const t = M.ctx.currentTime; M.out.gain.cancelScheduledValues(t); M.out.gain.setValueAtTime(M.out.gain.value, t); M.out.gain.linearRampToValueAtTime(0, t + 1.8); } catch (e) {}
-  setTimeout(() => { for (const o of Array.from(M.live)) { try { o.onended = null; o.stop(); } catch (e) {} } try { M.out.disconnect(); } catch (e) {} }, 2100);
+  try { musicFade(M, M.ctx.currentTime); } catch (e) {}
+  setTimeout(() => musicHush(M), 2100);
+  setTimeout(() => { musicUnplug(M); musicNap(0); }, 9500);
+}
+/* ---------- getting ready before the press ----------
+   Working out the echo, starting the browser's sound engine and handing it the echo each hold the page up for a moment. On
+   the press itself that moment is a stutter just as the camera sets off; a little earlier, nobody sees it. One step is done
+   per call, so the caller can spread them over idle moments:
+     1. the echo's samples, for the most usual sample rate. Needs nothing, so it can happen at any time.
+     2. the engine, made asleep, so that nothing is switched on in the visitor's sound system for a tour they may never take.
+        Browsers allow no sound before the page has been clicked or a key pressed, and making the engine sooner only earns a
+        warning, so this waits for that. Unless the press itself has come ("now"), it is also left alone on phones and
+        tablets, where a page that opens a sound engine can interrupt music playing in another app.
+     3. the echo, handed to the engine.
+   Returns true while there is more that it could do. */
+function musicMay() { const ua = navigator.userActivation; return ua ? !!ua.hasBeenActive : !!music.touched; }
+const musicReady = () => !!(tuner.ctx && music.rack && music.rack.ctx === tuner.ctx);
+const musicDesk = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : { matches: true };
+function musicWarm(now) {
+  if (music.M || musicReady() || prefs.tourMusic === false) return false;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+  try {
+    if (!tuner.ctx) {
+      if (!now && !music.echo) { music.echo = musicEcho(48000, 6.5); return true; }
+      if (!musicMay() || (!now && !musicDesk.matches)) return false;
+      const ctx = tuner.ctx = new AC();
+      if (now) musicNap(); else if (ctx.suspend) ctx.suspend().catch(() => {});
+      return true;
+    }
+    music.rack = musicRack(tuner.ctx); music.echo = null;      /* the engine keeps its own copy of the echo */
+  } catch (e) {}
+  return false;
+}
+/* the press has come: wake the engine now, so that the first note is not kept waiting for it */
+function musicWake() { const ctx = tuner.ctx; try { if (ctx && !music.M && ctx.state === 'suspended' && musicMay() && prefs.tourMusic !== false) { ctx.resume().catch(() => {}); musicNap(); } } catch (e) {} }
+/* nothing is playing and nothing is about to: put the engine back to sleep (the radio's tuning noise and the next tour each wake it again) */
+function musicNap(ms) {
+  clearTimeout(music.rest);
+  music.rest = setTimeout(() => {
+    const ctx = tuner.ctx; if (!ctx || music.M || tuner.src || ctx.state !== 'running' || !ctx.suspend) return;
+    if (performance.now() < (tuner.quietAt || 0)) return musicNap(600);      /* the tuning noise is still dying away */
+    ctx.suspend().catch(() => {});
+  }, ms == null ? 4000 : ms);
+}
+for (const ev of ['mousedown', 'pointerup', 'touchend', 'keydown']) window.addEventListener(ev, () => { music.touched = true; }, { capture: true, passive: true, once: true });
+/* test only: two tours one after the other on one echo, rendered faster than real time. The first is stopped at 5 s and
+   cleared away at 14.5 s, the second begins at 8 s. Reports the loudness of each second, so it can be seen that the first
+   fades to nothing, that none of it leaks into the second, and that the second keeps its echo when the first is unplugged. */
+function musicShareProbe(alone) {
+  const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext, sr = 22050, secs = 20, ctx = new OC(2, sr * secs, sr), rack = musicRack(ctx), keep = music.M;
+  let A = null, B = null;
+  const begin = t => { const M = musicBuild(ctx, rack); M.out.gain.setValueAtTime(0, t); M.out.gain.linearRampToValueAtTime(music.level, t + 0.45); musicFill(M, t + 12); musicOpen(M, t + 0.04); return M; };
+  const at = (t, f) => ctx.suspend(t).then(() => { try { f(); } catch (e) {} return ctx.resume(); });
+  if (!alone) { A = begin(0); at(5, () => musicFade(A, 5)); at(7.1, () => musicHush(A)); at(14.5, () => { music.M = B; musicUnplug(A); music.M = keep; }); }
+  at(8, () => { B = begin(8); });
+  return ctx.startRendering().then(buf => {
+    const L = buf.getChannelData(0), R = buf.getChannelData(1), rows = []; let bad = 0;
+    for (let s0 = 0; s0 < secs; s0++) { let e = 0; for (let i = s0 * sr; i < (s0 + 1) * sr; i++) { const a = L[i], b = R[i]; if (!isFinite(a) || !isFinite(b)) bad++; e += a * a + b * b; } rows.push(+(10 * Math.log10(e / (2 * sr) + 1e-12)).toFixed(1)); }
+    return { perSecondDb: rows.join(' '), notNumbers: bad };
+  });
 }
 /* test only: render a stretch of the music faster than real time and report how loud it is, so levels can be checked without ears */
 function musicProbe(secs) {

@@ -11,6 +11,7 @@ node tools/build.js                 # src/ + assets/  ->  index.html (no depende
 node --check .build/app.check.js    # syntax check of the joined program
 python3 -m http.server 8080         # serve locally at http://localhost:8080
 python3 tools/make-data.py          # rebuild assets/cables.json and assets/nuclear.json from data/
+python3 tools/fill-pole.py          # only after replacing assets/surf.jpg or assets/land.b64: fills the South Pole again
 
 npm install && npx playwright install chromium   # once, for tests only
 node tests/smoke.js ok quake        # expect "errors: none"
@@ -60,7 +61,9 @@ node tests/smoke.js offline boot
 | `src/app/82-infra.js`, `83-cams.js` | Cables and nuclear sites; live cameras |
 | `src/app/86-open.js`, `87-music.js`, `88-tour.js` | Opening sequence, tour music, tour mode |
 | `src/app/90-main.js` | Wiring, scheduler (`sched`), start-up steps (`BOOT`), frame loop |
+| `src/index.html` (`#wm`), `docs/brand/` | The wordmark, drawn as outlines and reused wherever the name appears; the mark, icon and banner |
 | `assets/`, `data/` | Embedded map data, and the raw files it is built from |
+| `tools/` | `build.js` (the build), `make-data.py` (cables and reactors), `landmask.js` and `fill-pole.py` (the land dots and the South Pole) |
 | `tests/smoke.js` | Headless tests with stand-in feeds |
 
 Adding a layer is described step by step in `CONTRIBUTING.md`.

@@ -37,7 +37,7 @@ The name is the Kármán line: 100 km up, where the sky is said to end and space
 
 **Things to try**
 
-- **Take the tour.** Press <kbd>T</kbd>. The globe flies itself round every notable event happening now, with a caption at each stop and music made in the browser as it plays.
+- **Take the tour.** Press <kbd>T</kbd>, or the tour button beside the name or in the view controls. The globe flies itself round every notable event happening now, with a caption at each stop and music made in the browser as it plays.
 - **Click anywhere.** Any point on land or sea opens its weather, local time, air quality, country facts and what is happening nearby.
 - **Look through a camera.** Live video in California, a clip from the last few minutes in London, the past day replayed in Finland, a fresh picture every minute in Singapore.
 - **Tune the radio.** Click a station and listen live, or let it scan from country to country.
@@ -138,7 +138,7 @@ Kármán exists because these organisations publish their data openly. Thank you
 | **Cameras** | [Fintraffic Digitraffic](https://www.digitraffic.fi/en/road-traffic/) · [Transport for London](https://tfl.gov.uk/info-for/open-data-users/) · [LTA Singapore](https://data.gov.sg/) · [Caltrans](https://quickmap.dot.ca.gov/) |
 | **Infrastructure** | [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/), as cleaned by [Tristan Hotham](https://github.com/Tristan-Hotham/submarine-cables) · [IAEA PRIS](https://pris-stats.iaea.org/) via [GeoNuclearData](https://github.com/cristianst85/GeoNuclearData) · [Wikidata](https://www.wikidata.org/) |
 | **Base map** | [Natural Earth](https://www.naturalearthdata.com/) · [NASA Earth Observatory](https://earthobservatory.nasa.gov/features/NightLights) · Peter Bird (2003) via [Hugo Ahlenius](https://github.com/fraxen/tectonicplates) |
-| **Software** | [three.js](https://threejs.org/) · [satellite.js](https://github.com/shashwatak/satellite-js) · [hls.js](https://github.com/video-dev/hls.js) · [Geist](https://vercel.com/font) |
+| **Software** | [three.js](https://threejs.org/) · [satellite.js](https://github.com/shashwatak/satellite-js) · [hls.js](https://github.com/video-dev/hls.js) · [Geist](https://vercel.com/font) · [Unbounded](https://github.com/googlefonts/unbounded) |
 
 What each one provides, where a backup steps in, and the terms it comes under are set out in **[NOTICE.md](NOTICE.md)**.
 

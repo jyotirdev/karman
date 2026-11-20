@@ -19,7 +19,7 @@ const TOUR_PACE = [['Relaxed', 0.72], ['Normal', 1], ['Brisk', 1.4]];
 const tour = { on: false, paused: false, hover: false, leaving: false, list: [], i: -1, phase: 'idle', time: 0, t0: 0, dur: 1, held: 0, hold: 6000, lastNow: 0, hump: 0, capAt: 0, rate: 1,
   rig: tRig(), from: tRig(), to: tRig(), tmp: tRig(), vel: tRig(), v0: tRig(), prev: tRig(), prevOk: false, bank: 0,
   look: new THREE.Vector3(), ahead: new THREE.Vector3(0, 1, 0), up: new THREE.Vector3(0, 1, 0), focus: new THREE.Vector3(),
-  showRing: false, capShown: -1, fill: null, counts: [], teleAt: 0, warp: 0, power: 0, travel: 0, lead: 0, km: 0, lastC: null, trailN: 0, leg: false, off: 0, idleAt: 0, wake: null, fs: false, laps: 0, exit: null, spin: false, arcT: -1 };
+  showRing: false, capShown: -1, fill: null, counts: [], teleAt: 0, warp: 0, power: 0, travel: 0, lead: 0, km: 0, lastC: null, trailN: 0, leg: false, off: 0, off0: 0, idleAt: 0, wake: null, fs: false, laps: 0, exit: null, spin: false, arcT: -1, fresh: false, ride: false, launch: 0 };
 const tourEl = $('#tour'), tourRing = $('#tour-ring');
 const TE = { kick: $('#tour-kick'), title: $('#tour-title'), text: $('#tour-text'), facts: $('#tour-facts'), place: $('#tour-place'), dots: $('#tour-dots'), count: $('#tour-count'),
   cats: $('#tour-cats'), near: $('#tour-near'), nearBox: $('#tour-near-box'), next: $('#tour-queue'), alt: $('#tt-alt'), pos: $('#tt-pos'), km: $('#tt-km'), clock: $('#tour-clock'), play: $('#tour-play'), pace: $('#tour-pace'), music: $('#tour-music'), sweep: $('#tour-sweep') };
@@ -54,7 +54,8 @@ function shotAt(s, t, o) {
     const u = clamp(t * 1000 / (s.span || s.hold), 0, 1);
     if (s.sweep) {                                     /* the opening: one slow swing round the planet, rising over it and drawing back, then closing in again, still moving as it hands over */
       const e = reduceMotion ? 0 : 0.78 * u * u * (3 - 2 * u) + 0.22 * u * u, arc = reduceMotion ? 0 : Math.pow(Math.sin(Math.PI * u), 2);
-      o.flat = s.lat + s.rise * arc; o.flon = wrapLon(s.lon + s.sweep * e);
+      /* it starts with whatever turn the globe already had and lets that die away as its own swing gathers, so the globe never stops to begin */
+      o.flat = s.lat + s.rise * arc; o.flon = wrapLon(s.lon + s.sweep * e + (s.v0 ? s.v0 * 1.2 * (1 - Math.exp(-t / 1.2)) : 0));
       o.dist = s.dist0 + (s.dist1 - s.dist0) * tEase(u) + s.back * arc;
     } else {
       o.flat = s.lat; o.flon = wrapLon(s.lon + (s.spin == null ? 3.6 : s.spin) * sm);
@@ -107,7 +108,10 @@ function clusters(items, cell, n) {
 /* put the stops in an order that makes one flowing trip of them: nearest first from where the camera is, then untangled so the
    path does not cross itself */
 function tourRoute(stops, lat0, lon0) {
-  let P = [{ pt: { lat: lat0, lon: lon0 } }]; const left = stops.slice(), d = (a, b) => gcKm(a.pt.lat, a.pt.lon, b.pt.lat, b.pt.lon);
+  let P = [{ pt: { lat: lat0, lon: lon0 } }]; const left = stops.slice(), n = left.length + 1, D = new Float64Array(n * n).fill(-1);
+  P[0].ri = 0; left.forEach((s, i) => { s.ri = i + 1; });
+  /* each distance is worked out once and remembered: the untangling below asks for the same ones over and over */
+  const d = (a, b) => { const k = a.ri * n + b.ri; return D[k] >= 0 ? D[k] : (D[k] = gcKm(a.pt.lat, a.pt.lon, b.pt.lat, b.pt.lon)); };
   const len = Q => { let t = 0; for (let i = 1; i < Q.length; i++) t += d(Q[i - 1], Q[i]); return t; };
   while (left.length) { const cur = P[P.length - 1]; let bi = 0, bd = Infinity; for (let i = 0; i < left.length; i++) { const x = d(cur, left[i]); if (x < bd) { bd = x; bi = i; } } P.push(left.splice(bi, 1)[0]); }
   for (let pass = 0, better = true; better && pass < 40; pass++) {
@@ -119,8 +123,8 @@ function tourRoute(stops, lat0, lon0) {
     }
     /* and move any single stop to wherever in the route it costs least, so one far-off event does not drag the camera there and back */
     for (let i = 1; i < P.length; i++) {
-      const s = P[i], rest = P.slice(0, i).concat(P.slice(i + 1)), base = len(P); let best = base - 1, at = -1;
-      for (let j = 1; j <= rest.length; j++) { const t = len(rest) + d(rest[j - 1], s) + (j < rest.length ? d(s, rest[j]) - d(rest[j - 1], rest[j]) : 0); if (t < best) { best = t; at = j; } }
+      const s = P[i], rest = P.slice(0, i).concat(P.slice(i + 1)), base = len(P), without = len(rest); let best = base - 1, at = -1;
+      for (let j = 1; j <= rest.length; j++) { const t = without + d(rest[j - 1], s) + (j < rest.length ? d(s, rest[j]) - d(rest[j - 1], rest[j]) : 0); if (t < best) { best = t; at = j; } }
       if (at >= 0) { rest.splice(at, 0, s); P = rest; better = true; }
     }
   }
@@ -343,6 +347,38 @@ function tourPace(d) {
   const n = TOUR_PACE.length, cur = prefs.tourPace == null ? 1 : prefs.tourPace;
   prefs.tourPace = d == null ? (cur + 1) % n : clamp(cur + d, 0, n - 1); savePrefs(); paintTourControls(); tourPoke();
 }
+/* how fast the globe is turning under the camera at this moment, in degrees of longitude a second: measured every frame
+   outside the tour, so the tour can take the motion over as it is instead of stopping it dead */
+const spin = { lon: 0, at: 0, rate: 0 };
+function trackSpin(now) {
+  const p = camera.position, lon = Math.atan2(-p.z, p.x) * R2D, ms = now - spin.at;
+  if (ms > 4 && ms < 120) spin.rate += (wrapLon(lon - spin.lon) * 1000 / ms - spin.rate) * 0.3; else if (ms >= 120) spin.rate = 0;
+  spin.lon = lon; spin.at = now;
+}
+/* ---------- ready before the press ----------
+   The slow parts of starting the music (see musicWarm) are done ahead of time, one step per idle moment: never while the
+   globe is being dragged, during the opening, or in a hidden tab. The first step needs nothing and is taken soon after the
+   globe opens; the rest wait until the visitor has clicked or pressed something. Pressing down on a tour button finishes
+   whatever is left, in the instant before the click itself arrives. */
+const warm = { busy: false, down: false };
+const whenIdle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 2500 }) : f => setTimeout(f, 250);
+function tourWarm() {
+  if (warm.busy || tour.on || musicReady() || prefs.tourMusic === false) return;
+  warm.busy = true;
+  whenIdle(() => {
+    warm.busy = false;
+    if (tour.on || music.M) return;
+    if (warm.down || !boot.entered || document.hidden || performance.now() - intro.exitAt < 3000) { setTimeout(tourWarm, 1200); return; }
+    if (musicWarm()) setTimeout(tourWarm, 350);
+  });
+}
+setTimeout(tourWarm, 6000);
+window.addEventListener('pointerdown', e => {
+  warm.down = true;
+  if (!tour.on && e.target && e.target.closest && e.target.closest('[data-act="tour"]')) { if (e.pointerType === 'mouse') music.touched = true; if (musicMay()) { let n = 0; while (musicWarm(true) && n++ < 3); musicWake(); } }
+}, { capture: true, passive: true });
+for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, () => { warm.down = false; tourWarm(); }, { capture: true, passive: true });
+window.addEventListener('keydown', tourWarm, { capture: true, passive: true });
 /* where the camera is, a few times a second: how high, and over what */
 function paintTelemetry(now) {
   if (now < tour.teleAt) return; tour.teleAt = now + 130;
@@ -380,7 +416,10 @@ function tourGo(i) {
   tour.dur = reduceMotion ? 1 : Math.min(5000, Math.max(1900 + 1500 * Math.min(1, ang / 170) + 400 * Math.min(1, Math.abs(B.dist - A.dist) / 6), turn * 1000 / 38));
   tour.capAt = Math.min(tour.laps || was ? 420 : 700, tour.dur * 0.3);
   /* the camera starts on its drift round the next place while it is still arriving, so a flight never ends in a standstill */
-  tour.lead = reduceMotion ? 0 : 0.4 * tour.dur; s.span = s.hold + tour.lead;
+  /* The very first leg is different: the opening swing begins on the press itself, and the camera's longitude simply follows it
+     (tour.ride) while height and latitude ease across, so the turn the globe had carries straight on into the tour. */
+  tour.ride = !was && !tour.laps && !!s.sweep && !reduceMotion; if (!tour.ride && s.v0) s.v0 = 0;
+  tour.lead = reduceMotion ? 0 : (tour.ride ? 1 : 0.4) * tour.dur; s.span = s.hold + tour.lead;
   tour.leg = !!(was && was.pt && s.pt);              /* a hop from one place on the ground to another is added to the trail when it is done */
   /* the rush between two events: stars streak past and the air rushes by, more for a longer flight */
   tour.power = was ? clamp(0.35 + ang / 70 + Math.abs(B.dist - A.dist) / 4, 0.35, 1) : 0;
@@ -394,16 +433,35 @@ function tourGo(i) {
     tourArc.geometry.attributes.position.needsUpdate = true; tourArc.visible = true; tour.arcT = 0;
   } else { tourArc.visible = false; tour.arcT = -1; }
 }
-function startTour() {
+/* The press is answered at once, before anything has had time to move: a ring of light leaves the button that was pressed
+   (or the Tour button beside the name, when it was the T key), and a wave of light crosses the planet from the middle of the
+   view, the same wave that marks each arrival but stronger. Both are drawn by the graphics card alone. */
+const tourBurst = $('#tour-burst');
+function tourLaunch(from) {
+  if (reduceMotion) return;
+  const now = performance.now();
+  introU.pulseDir.value.copy(camera.position).normalize(); introU.pulseGain.value = 1.8; intro.pulseAt = now; tour.launch = now;
+  if (!from || !from.offsetParent) from = [$('#view-tour'), $('.tour-pill'), $('#dock-tour')].find(el => el && el.offsetParent);
+  const disc = from && from.querySelector('.tour-disc'), r = disc && disc.getBoundingClientRect();
+  if (!r || !r.width || !tourBurst.animate) return;
+  tourBurst.style.transform = 'translate(' + (r.left + r.width / 2).toFixed(1) + 'px,' + (r.top + r.height / 2).toFixed(1) + 'px)';
+  const ease = 'cubic-bezier(.16, .7, .2, 1)';
+  tourBurst.children[0].animate([{ transform: 'scale(.02)', opacity: 0.95 }, { transform: 'scale(1)', opacity: 0 }], { duration: 950, easing: ease });
+  tourBurst.children[1].animate([{ transform: 'scale(.04)', opacity: 0 }, { transform: 'scale(.45)', opacity: 1, offset: 0.16 }, { transform: 'scale(1.25)', opacity: 0 }], { duration: 1150, easing: ease });
+}
+function startTour(from) {
   if (tour.on || !boot.entered) return;
   tourMusic();                                         /* first of all, so the music answers the press itself */
   const list = buildTour(true); if (!list.length) return;
+  tourLaunch(from);
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   if (selected) select(null);
   $('#tip').setAttribute('data-off', '');
-  const c = camLL(), R = tour.rig;
+  const c = camLL(), R = tour.rig, now = performance.now();
   Object.assign(R, tRig(), { flat: c.lat, flon: c.lon, dist: c.dist }); for (const p of TP) tour.vel[p] = 0;
-  Object.assign(tour, { on: true, paused: false, hover: false, leaving: false, list, i: -1, laps: 0, prevOk: false, bank: 0, teleAt: 0, lastNow: performance.now(), capShown: -1, spin: controls.autoRotate, km: 0, lastC: null, trailN: 0, lead: 0, warp: 0 });
+  /* the opening carries on from the way the globe was already turning */
+  if (list[0].sweep) list[0].v0 = reduceMotion || now - spin.at > 250 ? 0 : clamp(spin.rate, -6, 6);
+  Object.assign(tour, { on: true, paused: false, hover: false, leaving: false, list, i: -1, laps: 0, prevOk: false, bank: 0, teleAt: 0, lastNow: now, fresh: true, capShown: -1, spin: controls.autoRotate, km: 0, lastC: null, trailN: 0, lead: 0, warp: 0 });
   tourTrail.geometry.setDrawRange(0, 0); tourTrail.visible = true;
   tour.up.set(0, 1, 0);
   controls.autoRotate = false; controls.enabled = false; fly = null;
@@ -421,14 +479,14 @@ function stopTour() {
   for (const p of TP) { tour.from[p] = tour.rig[p]; tour.v0[p] = tour.vel[p]; }
   const wide = tour.rig.off < 1;                         /* settle on a normal view of whatever the tour was showing */
   tour.exit = { shot: 'wide', lat: wide ? tour.rig.flat : clamp(tour.rig.flat * 0.7, -32, 32), lon: tour.rig.flon, dist0: view.fit, spin: 0, hold: 1000 };
-  tour.phase = 'fly'; tour.t0 = tour.time; tour.dur = reduceMotion ? 1 : 1700; tour.hump = 0; tour.rate = 1; tour.lead = 0;
+  tour.phase = 'fly'; tour.t0 = tour.time; tour.dur = reduceMotion ? 1 : 1700; tour.hump = 0; tour.rate = 1; tour.lead = 0; tour.off0 = tour.off;
   app.classList.add('tour-out');
   if (tour.wake) { try { tour.wake.release(); } catch (e) {} tour.wake = null; }
   if (document.fullscreenElement && tour.fs) { try { document.exitFullscreen(); } catch (e) {} }
   tour.fs = false;
 }
 function tourDone() {                                  /* hand the globe back exactly as the visitor expects it */
-  tour.on = false; tour.leaving = false; tour.phase = 'idle'; tour.off = 0; tour.bank = 0; tour.counts = [];
+  tour.on = false; tour.leaving = false; tour.phase = 'idle'; tour.off = 0; tour.bank = 0; tour.counts = []; tour.launch = 0; introU.pulseGain.value = 1;
   camera.up.set(0, 1, 0); camera.position.setLength(view.fit); zoomTarget = view.fit;
   if (view.phone) camera.setViewOffset(view.w, view.h, 0, Math.round(view.h * 0.15), view.w, view.h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
@@ -447,16 +505,20 @@ function tourPoke() { tour.idleAt = performance.now() + 3200; if (app.classList.
    anything that resets it (a resized window, a restored graphics context) is put right at once. In a low pass the subject sits
    well right of centre; a whole-Earth view moves less, so the planet clears the panel on the right. */
 function tourOffset(k) {
-  const ox = view.phone ? 0 : -Math.round(view.w * (0.012 + 0.078 * clamp(tour.rig.off / 14, 0, 1)) * k), oy = Math.round(view.h * (view.phone ? 0.15 - 0.02 * k : 0.03 * k)), v = camera.view;
+  /* in small fractions of a pixel, not whole ones: moved a whole pixel at a time, the planet would cross the screen in little steps */
+  const ox = view.phone ? 0 : -Math.round(view.w * (0.012 + 0.078 * clamp(tour.rig.off / 14, 0, 1)) * k * 256) / 256, oy = Math.round(view.h * (view.phone ? 0.15 - 0.02 * k : 0.03 * k) * 256) / 256, v = camera.view;
   if (v && v.enabled && v.offsetX === ox && v.offsetY === oy && v.fullWidth === view.w && v.fullHeight === view.h) return;
   camera.setViewOffset(view.w, view.h, ox, oy, view.w, view.h); camera.updateProjectionMatrix();
 }
 
 /* once a frame, before the usual controls: move the camera along its flight or its drift */
 function stepTour(now) {
+  if (tour.launch && now - tour.launch > 1500) { tour.launch = 0; introU.pulseGain.value = 1; }
+  if (tour.fresh) { tour.fresh = false; tour.lastNow = now; }      /* the tour's clock starts with its first frame, however long the press took to deal with */
   const raw = now - tour.lastNow, real = clamp(raw, 0, 250), dms = real * tour.rate; tour.lastNow = now; tour.time += dms;      /* the tour's own clock: a stall or a hidden tab never makes the camera leap */
-  const s = tour.leaving ? tour.exit : tour.list[tour.i], R = tour.rig, B = tour.to, want = tour.leaving ? 0 : 1;
-  if (tour.off !== want) { tour.off += (want - tour.off) * Math.min(1, real / 420); if (Math.abs(want - tour.off) < 0.003) tour.off = want; }
+  const s = tour.leaving ? tour.exit : tour.list[tour.i], R = tour.rig, B = tour.to;
+  /* a steady slide, eased at both ends below, which a slow frame cannot make jump; on the way out it keeps step with the flight home, so the two end together */
+  if (tour.leaving) tour.off = tour.off0 * (1 - clamp((tour.time - tour.t0) / tour.dur, 0, 1)); else if (tour.off < 1) tour.off = Math.min(1, tour.off + Math.min(real, 100) / 1200);
   tourOffset(tSmooth(tour.off));
   if (now > tour.idleAt && !tour.leaving && !tour.paused && !tour.hover && !app.classList.contains('tour-idle')) app.classList.add('tour-idle');
 
@@ -466,6 +528,7 @@ function stepTour(now) {
     const g = 0.7 * (1 - Math.exp(-t / 700));          /* the camera keeps gliding the way it was going, slowing down, while the new flight takes over */
     shotAt(s, Math.max(0, t - (tour.dur - tour.lead)) / 1000, B);
     for (const p of TP) { const a = A[p] + v[p] * g; R[p] = a + (T_ANG[p] ? wrapLon(B[p] - a) : B[p] - a) * e; }
+    if (tour.ride && !tour.leaving) R.flon = B.flon;
     R.flon = wrapLon(R.flon); R.flat = clamp(R.flat, -89.5, 89.5); R.off = Math.max(0, R.off);
     R.dist += tour.hump * Math.pow(Math.sin(Math.PI * k), 2);
     if (!tour.leaving) {
@@ -576,7 +639,7 @@ function tourFull() {
   } catch (e) {}
 }
 if (!document.documentElement.requestFullscreen) $('#tour-full').hidden = true;
-document.addEventListener('click', e => { if (e.target.closest('[data-act="tour"]')) startTour(); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-act="tour"]'); if (b) startTour(b); });
 window.addEventListener('pointermove', () => { if (tour.on) tourPoke(); }, { passive: true });
 window.addEventListener('pointerdown', () => { if (tour.on) tourPoke(); }, { passive: true });
 window.addEventListener('keydown', e => {
@@ -628,6 +691,24 @@ function tourSim(stops, fps, linger) {
   return { frames: rows.length, seconds: +((t - rows[0][0]) / 1000).toFixed(1), maxSpeed: +maxV.toFixed(2), maxTurn: +maxW.toFixed(1), flights: Object.keys(flights).map(k => k.split(':')[1] + ' ' + (flights[k].n * dt / 1000).toFixed(1) + 's ' + Math.round(flights[k].peak)).join(' | '), worstTurnChanges: byTurn,
     holds: tour.list.map(s => s.key + ' ' + (s.hold / 1000).toFixed(1)).join(' ') };
 }
-if (location.hash === '#test') window.__tour = { musicProbe, musicOn: () => !!music.M, sim: tourSim, cam: () => camera.position.toArray().concat(camera.quaternion.toArray()), start: startTour, stop: stopTour, go: tourGo, pause: tourPause, pace: tourPace,
+/* test only: the moment the tour begins, on a pretend clock. Some frames of the globe turning by itself, the press, then the
+   first frames of the tour, one of which can be made to arrive late ("stall" milliseconds). It reports how far a point on the
+   ground moves across the screen from each frame to the next, so a jolt or a standstill shows up as a number. */
+function tourEntrySim(fps, stall, secs) {
+  const dt = 1000 / (fps || 60), rows = [], P = new THREE.Vector3(), M4 = new THREE.Matrix4(), c0 = camLL(), g = ll(c0.lat, c0.lon, 1, new THREE.Vector3()).clone(), PRE = 40;
+  let t = performance.now();
+  const snap = tag => { camera.updateMatrixWorld(); M4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); P.copy(g).applyMatrix4(M4); rows.push([t, (P.x * 0.5 + 0.5) * view.w, (0.5 - P.y * 0.5) * view.h, camLL().lon, camera.position.length(), tag]); };
+  for (let n = 0; n < PRE; n++) { t += dt; controls.update(); trackSpin(t); snap('spin'); }
+  const real = performance.now; performance.now = () => t;      /* the press lands just after a frame */
+  try { startTour(); } finally { performance.now = real; }
+  for (let n = 0; n < (secs || 3) * 1000 / dt; n++) { t += dt + (n === 6 ? stall || 0 : 0); stepTour(t); controls.update(); tourLook(); snap(tour.phase); }
+  const per = k => 1000 / (rows[k][0] - rows[k - 1][0]), px = rows.map((r, k) => (k ? Math.hypot(r[1] - rows[k - 1][1], r[2] - rows[k - 1][2]) * per(k) : 0)), lon = rows.map((r, k) => (k ? wrapLon(r[3] - rows[k - 1][3]) * per(k) : 0));
+  let jolt = 0, at = 0; for (let k = 2; k < px.length; k++) { const d = Math.abs(px[k] - px[k - 1]) / 60; if (d > jolt) { jolt = d; at = k - PRE; } }
+  const pick = a => a.slice(PRE - 4, PRE + 180).filter((v, k) => k < 44 || k % 6 === 0).map(v => +v.toFixed(1)).join(' ');
+  tour.lastNow = performance.now();
+  return { spinBefore: +spin.rate.toFixed(2), carried: tour.list[0].v0, pxPerSecond: pick(px), lonDegPerSecond: pick(lon), worstJoltPxPerFrame: +jolt.toFixed(2), joltFrame: at, slowestLon: +Math.min.apply(null, lon.slice(PRE + 1, PRE + 110).map(Math.abs)).toFixed(2),
+    dist: [rows[PRE - 1][4], rows[rows.length - 1][4]].map(v => +v.toFixed(3)), firstLeg: Math.round(tour.dur), ride: tour.ride };
+}
+if (location.hash === '#test') window.__tour = { entry: tourEntrySim, gl: () => ({ programs: renderer.info.programs.length, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries }), warm: () => ({ samples: music.echo ? music.echo.rate : 0, engine: tuner.ctx ? tuner.ctx.state + ' ' + tuner.ctx.sampleRate : 'none', echo: !!music.rack, ready: musicReady(), may: musicMay(), desk: musicDesk.matches }), musicShare: musicShareProbe, musicProbe, musicOn: () => !!music.M, sim: tourSim, cam: () => camera.position.toArray().concat(camera.quaternion.toArray()), start: () => startTour(), stop: stopTour, go: tourGo, pause: tourPause, pace: tourPace,
   dbg: () => ({ warp: tour.warp, stars: tourStars.g.visible, trail: tourTrail.visible, trailN: tour.trailN, arc: tourArc.visible, zoom: camera.zoom, lines: scene.children.filter(o => o.visible && (o.isLine || o.isLineSegments)).length }), hide: w => { const o = { stars: tourStars.g, trail: tourTrail, arc: tourArc }[w]; if (o) o.visible = false; else { let n = 0; scene.traverse(c => { if ((c.isLine || c.isLineSegments) && c.visible && c !== tourTrail && c !== tourArc && n++ === +w) c.visible = false; }); } },
   state: () => ({ on: tour.on, i: tour.i, n: tour.list.length, phase: tour.phase, rate: tour.rate, keys: tour.list.map(s => s.key.split(':')[0]), cats: tour.list.map(s => s.cat), rig: Object.assign({}, tour.rig), title: tour.list[tour.i] && tour.list[tour.i].title }) };

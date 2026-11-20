@@ -126,7 +126,8 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
   for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
     if (only && only !== name) continue;
     if (process.env.VW && name === 'desktop') { vp.width = +process.env.VW; vp.height = +process.env.VH || vp.height; }
-    const page = await browser.newPage({ viewport: vp, deviceScaleFactor: name === 'phone' ? 2 : 1 });
+    const page = await browser.newPage({ viewport: vp, deviceScaleFactor: +process.env.DPR || (name === 'phone' ? 2 : 1) });
+    if (process.env.WARM_NOGESTURE) await page.addInitScript(() => { Object.defineProperty(navigator, 'userActivation', { get: () => ({ hasBeenActive: !!window.__gesture, isActive: false }) }); });      /* a visitor who has not clicked or pressed anything yet */
     const errors = [], unknown = new Set(); let satLib = 0;
     page.on('requestfailed', r => { if (process.env.NETLOG && !/fonts/.test(r.url())) console.log('FAILED', r.url().slice(0, 90)); });
     page.on('requestfinished', r => { if (process.env.NETLOG && /met\.no|open-meteo\.com\/v1\/forecast\?latitude=19/.test(r.url())) console.log('OK', r.url().slice(0, 90)); });
@@ -238,7 +239,7 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
     });
     if (process.env.SEEN) await page.addInitScript(() => { try { localStorage.setItem('ern:prefs', JSON.stringify({ t: Date.now(), v: { on: {}, win: 'day', tab: 'layers', seen: true, overlay: 'rain' } })); } catch (e) {} });
     if (process.env.REDUCED) await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('file://' + path.join(__dirname, '..', 'index.html') + '#' + (process.env.HASH || 'test'));
+    await page.goto('file://' + (process.env.PAGE || path.join(__dirname, '..', 'index.html')) + '#' + (process.env.HASH || 'test'));
     if (action === 'open') {
       await page.waitForTimeout(2500);
       if (process.env.OPEN_LOOK) await page.evaluate(v => window.__ern.look(+v[0], +v[1]), process.env.OPEN_LOOK.split(','));
@@ -283,44 +284,107 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
     if (action === 'overlay') { await page.selectOption('#overlay-pick', 'sst'); await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-overlay-loading.png` }); await page.waitForTimeout(4000); console.log('  legend:', await page.evaluate(() => document.querySelector('#legend').textContent.slice(0, 90))); }
     if (action === 'cam' || action === 'train' || action === 'cables') { const k = action === 'cam' ? 'cams' : action === 'train' ? 'trains' : 'cables'; await page.evaluate(k => document.querySelector('#layer-' + k).click(), k); await page.waitForTimeout(5000);
       if (action !== 'cables') { await page.evaluate(k => window.__ern.pick(k, k === 'cams' ? 400 : 90), k); await page.waitForTimeout(3000); console.log('  ' + action + ':', await page.evaluate(() => document.querySelector('#detail .big').textContent + ' || ' + [...document.querySelectorAll('#detail .kv > div')].map(d => d.textContent).join(' | '))); } }
-    if (action === 'infra') {
-      await page.evaluate(() => document.querySelector('[data-layer="nuclear"]').scrollIntoView({ block: 'center' })); await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/shot-${name}-infra-layers.png` });
-      console.log('  layer rows:', await page.evaluate(() => [...document.querySelectorAll('#tab-layers .layer')].map(l => l.dataset.layer + '=' + ((l.querySelector('.count') || l.querySelector('[id^=count-]') || {}).textContent || '')).join(', ')));
-      await tab('guide'); await page.evaluate(() => { const h = [...document.querySelectorAll('#tab-guide h3')].find(x => x.textContent === 'Infrastructure'); if (h) h.scrollIntoView({ block: 'start' }); }); await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/shot-${name}-infra-guide.png` });
-      console.log('  guide intro:', await page.evaluate(() => document.querySelector('#tab-guide .hint').textContent));
-      await tab('sources'); await page.evaluate(() => { const s = document.querySelector('#tab-sources'); s.scrollTop = s.scrollHeight; (s.closest('.scroll') || s.parentElement).scrollTop = 1e6; }); await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/shot-${name}-infra-sources.png` });
-      console.log('  sources:', await page.evaluate(() => [...document.querySelectorAll('#tab-sources .src')].map(a => a.querySelector('.t').firstChild.textContent + '[' + a.querySelector('.dot').dataset.state + ']').join(', ')));
-      await page.fill('#search-input', 'vogt'); await page.waitForTimeout(1500); console.log('  search vogt:', await page.evaluate(() => [...document.querySelectorAll('#search-results [role=option]')].map(o => o.textContent).join(' | ')));
-      await page.fill('#search-input', '2afr'); await page.waitForTimeout(1500); console.log('  search 2afr:', await page.evaluate(() => [...document.querySelectorAll('#search-results [role=option]')].map(o => o.textContent).join(' | ')));
-      await page.keyboard.press('Enter'); await page.waitForTimeout(2500); console.log('  after Enter:', await page.evaluate(() => (document.querySelector('#detail .insp-head .type') || {}).textContent + ' || ' + (document.querySelector('#detail .insp-title') || {}).textContent)); await page.screenshot({ path: `${OUT}/shot-${name}-infra-search.png` }); }
-    if (action === 'camlive') {
-      const st = () => page.evaluate(() => { const s = document.querySelector('#cam-stage'), v = document.querySelector('#cam-video'); return !s ? 'no stage' : JSON.stringify({ title: document.querySelector('#detail .big').textContent, mode: s.dataset.mode, state: s.dataset.state, word: document.querySelector('#cam-word').textContent, clock: document.querySelector('#cam-clock').textContent, btn: (document.querySelector('#cam-play') || {}).textContent, note: document.querySelector('#cam-note').textContent, videoHidden: v.hidden, videoTime: +v.currentTime.toFixed(2), paused: v.paused, img: (document.querySelector('#cam-img').getAttribute('src') || '').slice(-34), hls: typeof window.Hls }); });
-      console.log('  cameras:', await page.evaluate(() => window.__ern.camKinds()));
-      console.log('  london', await page.evaluate(() => window.__ern.find('cams', 'Test Road / Camera 3'))); await page.waitForTimeout(5000); console.log('   ', await st()); await page.screenshot({ path: `${OUT}/shot-${name}-cam-london.png` });
-      await page.click('#cam-play'); await page.waitForTimeout(700); console.log('    after Stop:', await st()); await page.click('#cam-play'); await page.waitForTimeout(3500); console.log('    after Play:', await st());
-      console.log('  finland', await page.evaluate(() => window.__ern.camFirst('Finland'))); await page.waitForTimeout(2500); console.log('   ', await st()); await page.click('#cam-play'); await page.waitForTimeout(6000); console.log('    replay:', await st()); await page.screenshot({ path: `${OUT}/shot-${name}-cam-finland.png` });
-      await page.waitForTimeout(2500); console.log('    replay later:', await st()); await page.click('#cam-play'); await page.waitForTimeout(700); console.log('    back to now:', await st());
-      console.log('  california', await page.evaluate(() => window.__ern.camFirst('California'))); await page.waitForTimeout(6000); console.log('   ', await st()); await page.screenshot({ path: `${OUT}/shot-${name}-cam-california.png` });
-      console.log('  singapore', await page.evaluate(() => window.__ern.camFirst('Singapore'))); await page.waitForTimeout(2500); console.log('   ', await st());
-      await page.click('[data-cam="next"]'); await page.waitForTimeout(3500); console.log('  another camera:', await st());
-      await page.keyboard.press('Escape'); await page.click('#insp-close').catch(() => {}); await page.waitForTimeout(600); console.log('  closed:', await page.evaluate(() => window.__ern.camState())); }
-    if (action === 'nuclear') { for (const t of (process.env.NUKE || 'Vogtle,Test research reactor').split(',')) { console.log('  nuclear find', t, await page.evaluate(t => window.__ern.find('nuclear', t), t)); await page.waitForTimeout(2600);
-        console.log('   ', await page.evaluate(() => document.querySelector('#detail .insp-head .type').textContent + ' || ' + document.querySelector('#detail .big').textContent + ' || ' + (document.querySelector('#detail .explain') || {}).textContent + ' || ' + [...document.querySelectorAll('#detail .kv > div')].map(d => d.textContent).join(' | ') + ' || ' + [...document.querySelectorAll('#detail .row.unit')].map(d => d.textContent).join(' / ').slice(0, 400) + ' || ' + [...document.querySelectorAll('#detail .insp-actions a')].map(a => a.textContent + '=' + a.href).join(' , ')));
-        await page.screenshot({ path: `${OUT}/shot-${name}-nuclear-${t.replace(/\W+/g, '_')}.png` }); }
-      console.log('  nuclear count:', await page.evaluate(() => document.querySelector('#count-nuclear').textContent), '| kinds:', await page.evaluate(() => window.__ern.kinds())); }
-    if (action === 'cable') { const info = await page.evaluate(() => window.__ern.cableInfo()); console.log('  cables', JSON.stringify(info));
-      for (const m of info.mid) console.log('   at the middle of', m[0], '->', await page.evaluate(m => window.__ern.cableAt(m[1], m[2], 6), m), '| 3 degrees off ->', await page.evaluate(m => window.__ern.cableAt(m[1] + 3, m[2] + 3, 6), m));
-      console.log('  find 2Africa', await page.evaluate(() => window.__ern.find('cable', '2Africa'))); await page.waitForTimeout(3000);
-      console.log('   ', await page.evaluate(() => document.querySelector('#detail .insp-head .type').textContent + ' || ' + document.querySelector('#detail .insp-title').textContent + ' || ' + [...document.querySelectorAll('#detail .kv > div')].map(d => d.textContent).join(' | ') + ' || ' + [...document.querySelectorAll('#detail .insp-actions a')].map(a => a.href).join(' , ')), JSON.stringify(await page.evaluate(() => window.__ern.cableInfo().hi)));
-      await page.screenshot({ path: `${OUT}/shot-${name}-cable.png` });
-      await page.mouse.click(vp.width * 0.5, vp.height * 0.5); await page.waitForTimeout(2500); console.log('   after a click in the middle of the view:', await page.evaluate(() => (document.querySelector('#detail .insp-head .type') || {}).textContent + ' || ' + (document.querySelector('#detail .insp-title') || {}).textContent)); await page.screenshot({ path: `${OUT}/shot-${name}-cable-click.png` }); }
-    if (action === 'dsn' || action === 'warn') { await page.evaluate(k => window.__ern.pick(k, k === 'dsn' ? 2 : 0), action === 'dsn' ? 'dsn' : 'warnings'); await page.waitForTimeout(2200); console.log('  ' + action + ':', await page.evaluate(() => document.querySelector('#detail .big').textContent + ' || ' + [...document.querySelectorAll('#detail .kv > div')].map(d => d.textContent).join(' | ') + ' || ' + [...document.querySelectorAll('#detail .row')].map(d => d.textContent).join(' / ').slice(0, 420))); }
-    if (action === 'read') { await tab('news'); await page.click('#tab-news [data-sel^="mostread"] >> nth=0'); await page.waitForTimeout(1200); await tab('latest'); console.log('  feed past launches:', await page.evaluate(() => [...document.querySelectorAll('#tab-latest [data-sel^="pastlaunch"]')].map(r => r.textContent).join(' / ').slice(0, 300))); }
-    if (mode === 'refused') { console.log('  CelesTrak requests while refused:', ctLog.join(', ')); console.log('  notice:', await page.evaluate(() => { const n = document.querySelector('#notice'); return n.hidden ? '(hidden)' : n.textContent; }));
-      console.log('  counts:', await page.evaluate(() => ['starlink', 'sats', 'debris', 'rockets', 'dead'].map(k => k + '=' + document.querySelector('#count-' + k).textContent).join(' ')));
-      if (action === 'release') { ctLog.length = 0; refuse = false; await page.evaluate(() => window.__ern.ctRelease()); await page.waitForTimeout(16000); console.log('  after the wait is over, requests:', ctLog.join(', ')); console.log('  notice:', await page.evaluate(() => { const n = document.querySelector('#notice'); return n.hidden ? '(hidden)' : n.textContent; }));
-        console.log('  counts:', await page.evaluate(() => ['starlink', 'sats', 'debris', 'rockets', 'dead'].map(k => k + '=' + document.querySelector('#count-' + k).textContent).join(' '))); } }
-    if (action === 'guide') { await tab('guide'); }
+    if (action === 'tourprof') {
+      /* the start of a tour on a pretend 60 Hz clock (how the ground moves across the screen, frame by frame), and how long the start itself takes */
+      const gl = async tag => console.log('  gl', tag, JSON.stringify(await page.evaluate(() => window.__tour.gl())));
+      await gl('before any tour');
+      for (const stall of [0, 100]) {
+        console.log('  entry sim, one frame ' + stall + ' ms late', JSON.stringify(await page.evaluate(st => window.__tour.entry(60, st, 3), stall), null, 1).replace(/\n\s*/g, ' '));
+        await page.evaluate(() => window.__tour.stop()); await page.waitForFunction(() => !window.__tour.state().on, null, { timeout: 30000 }); await page.waitForTimeout(2500);
+      }
+      for (let run = 0; run < 3; run++) {
+        const ms = await page.evaluate(() => { const t0 = performance.now(); window.__tour.start(); return +(performance.now() - t0).toFixed(1); });
+        await page.waitForTimeout(2500); await gl('run ' + run + ' after start');
+        console.log('  tour start', run, 'took', ms, 'ms | music', await page.evaluate(() => window.__tour.musicOn()));
+        await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.__tour.state().on, null, { timeout: 30000 }); await page.waitForTimeout(2500);
+      }
+    }
+    if (action === 'tourwarm') {
+      /* is the sound engine made ready ahead of the press, and how long do the press and the click each hold the page up? */
+      const warm = async tag => console.log('  ' + tag + ':', JSON.stringify(await page.evaluate(() => window.__tour.warm())));
+      const watch = () => page.evaluate(() => { window.__ev = []; if (!window.__evo) { window.__evo = new PerformanceObserver(l => l.getEntries().forEach(e => window.__ev.push(e.name + ' ' + (e.processingEnd - e.processingStart).toFixed(1)))); window.__evo.observe({ type: 'event', durationThreshold: 16, buffered: false }); } });
+      const events = async tag => console.log('  ' + tag + ' handlers (ms):', (await page.evaluate(() => window.__ev.filter(x => /^(pointerdown|mousedown|pointerup|mouseup|click|keydown)/.test(x)).join(' | '))) || 'none slower than 16 ms');
+      await page.waitForTimeout(3500); await warm('before any click'); await page.waitForTimeout(+process.env.WARM_WAIT || 5000); await warm('a few seconds later, still no click');
+      if (process.env.WARM_IDLE) {
+        await page.mouse.click(260, 22); await warm('just after a click on the name');
+        await page.waitForTimeout(+process.env.WARM_IDLE); await warm('after ' + process.env.WARM_IDLE + ' ms of quiet');
+      }
+      for (let run = 0; run < (process.env.WARM_RUNS ? +process.env.WARM_RUNS : 3); run++) {
+        await watch();
+        if (process.env.WARM_KEY) await page.keyboard.press('t'); else { const bx = await page.locator(name === 'phone' ? '.tour-pill' : run === 1 ? '#view-tour' : '#dock-tour').boundingBox(); await page.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2); await page.mouse.down(); await warm('run ' + run + ', pressed, not yet released'); await page.waitForTimeout(90); await page.mouse.up(); }
+        await page.waitForTimeout(2500); await events('run ' + run); await warm('run ' + run + ' touring=' + await page.evaluate(() => window.__tour.state().on) + ' music=' + await page.evaluate(() => window.__tour.musicOn()));
+        await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.__tour.state().on, null, { timeout: 30000 }); await page.waitForTimeout(run === 1 ? 300 : 6000);      /* the third tour begins as soon as the second has let go, while its echo is still ringing out */
+      }
+      await page.waitForTimeout(11000); await warm('eleven seconds after the last tour');
+      if (process.env.WARM_CANCEL && name !== 'phone') { const bx = await page.locator('#dock-tour').boundingBox(); await page.mouse.move(bx.x + 14, bx.y + 14); await warm('before the cancelled press'); await page.mouse.down(); await warm('pressed'); await page.mouse.move(bx.x + 14, bx.y - 200); await page.mouse.up(); await warm('let go elsewhere, touring=' + await page.evaluate(() => window.__tour.state().on)); await page.waitForTimeout(5500); await warm('five seconds on'); }
+    }
+    if (action === 'musictest') {
+      for (let n = 0; n < (process.env.PAGE ? 0 : 3); n++) {
+        console.log('   two tours on one echo ', (await page.evaluate(() => window.__tour.musicShare())).perSecondDb);
+        console.log('   the second tour alone ', (await page.evaluate(() => window.__tour.musicShare(true))).perSecondDb);
+      }
+      for (let n = 0; n < 3; n++) console.log('   probe', JSON.stringify(await page.evaluate(() => window.__tour.musicProbe(60))));
+    }
+    if (action === 'tourcpu') {
+      /* what the page's own code does in the first seconds of a tour, by function, leaving out the drawing itself (which this machine does in software) */
+      await page.waitForTimeout(3000);
+      const cdp = await page.context().newCDPSession(page); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+      for (let run = 0; run < 2; run++) {
+        await cdp.send('Profiler.start'); await page.click('#dock-tour'); await page.waitForTimeout(+process.env.CPU_MS || 4000);
+        const { profile } = await cdp.send('Profiler.stop'), byId = new Map(profile.nodes.map(n => [n.id, n])), parent = new Map(); for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+        const self = new Map(), under = new Map(); let total = 0, frames = 0;
+        const chain = id => { const out = []; for (let x = id; x != null; x = parent.get(x)) out.push(byId.get(x).callFrame.functionName || '(anon)'); return out; };
+        profile.samples.forEach((id, k) => {
+          const d = profile.timeDeltas[k] / 1000, f = byId.get(id).callFrame, name = f.functionName || '(anon)', ch = chain(id);
+          if (name === '(idle)' || name === '(program)' || name === '(garbage collector)' && false) return;
+          if (ch.includes('render') && f.url === '') return;      /* native graphics calls made while drawing */
+          total += d; self.set(name + ':' + f.lineNumber, (self.get(name + ':' + f.lineNumber) || 0) + d);
+          const top = ch.find(n => ['paintCaption', 'paintTelemetry', 'startTour', 'placeLabels', 'tourMarks', 'stepTour', 'render', 'stepSatLayer', 'updateStations', 'musicFill', 'tickFade', 'stepIntro'].includes(n)) || 'other'; under.set(top, (under.get(top) || 0) + d);
+        });
+        console.log('  run ' + run + ': page code ' + total.toFixed(0) + ' ms in ' + (+process.env.CPU_MS || 4000) + ' ms | by part: ' + [...under].sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v.toFixed(0)).join(', '));
+        console.log('     heaviest: ' + [...self].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => k + ' ' + v.toFixed(1)).join(' | '));
+        await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.__tour.state().on, null, { timeout: 30000 }); await page.waitForTimeout(3000);
+      }
+    }
+    if (action === 'south') {
+      /* the far south, where the land dots are the last to land in the opening: are they all sitting on the globe? */
+      await page.waitForTimeout(2500); await page.screenshot({ path: `${OUT}/shot-${name}-south-wide.png` });
+      await page.evaluate(() => { document.querySelector('#view-spin').getAttribute('aria-pressed') === 'true' && document.querySelector('#view-spin').click(); });
+      for (const [lat, lon, wheel, tag] of [[-52, 150, -900, 'australia'], [-80, 20, -500, 'pole'], [-20, -60, 0, 'america']]) {
+        await page.evaluate(([la, lo]) => window.__ern.look(la, lo), [lat, lon]);
+        if (wheel) { await page.mouse.move(vp.width / 2, vp.height / 2); for (let n = 0; n < 6; n++) { await page.mouse.wheel(0, wheel / 6); await page.waitForTimeout(250); } }
+        await page.waitForTimeout(3500); await page.screenshot({ path: `${OUT}/shot-${name}-south-${tag}.png` });
+        if (wheel) { for (let n = 0; n < 6; n++) { await page.mouse.wheel(0, -wheel / 6); await page.waitForTimeout(250); } await page.waitForTimeout(1500); }
+      }
+      console.log('  land dots off the ground:', JSON.stringify(await page.evaluate(() => window.__ern.dots ? window.__ern.dots() : 'no hook')));
+    }
+    if (action === 'tourin') {
+      /* the first moments of the tour, with the interface's fades held at chosen instants so each can be looked at */
+      await page.waitForTimeout(4000);
+      const sel = name === 'phone' ? '.tour-pill' : (process.env.TOURIN_TOP ? '#view-tour' : '#dock-tour');
+      await page.screenshot({ path: `${OUT}/shot-${name}-tourin-rest.png` });
+      console.log('  play disc in each tour button (px from the button\'s left, top and bottom edges):', await page.evaluate(() => [...document.querySelectorAll('[data-act="tour"]')].filter(el => el.offsetParent).map(el => { const r = el.getBoundingClientRect(), d = el.querySelector('.tour-disc').getBoundingClientRect(); return (el.id || el.className.split(' ').pop()) + ' ' + [d.left - r.left, d.top - r.top, r.bottom - d.bottom].map(v => +v.toFixed(1)).join('/'); }).join(' | ')));
+      await page.hover(sel).catch(() => {}); await page.waitForTimeout(700); await page.screenshot({ path: `${OUT}/shot-${name}-tourin-hover.png` });
+      await page.evaluate(sel => { document.querySelector(sel).addEventListener('click', () => requestAnimationFrame(() => requestAnimationFrame(() => { window.__held = document.getAnimations().filter(a => a.transitionProperty || (a.effect && a.effect.target && a.effect.target.closest && a.effect.target.closest('#tour-burst'))); window.__held.forEach(a => a.pause()); })), { once: true }); }, sel);
+      await page.click(sel); await page.waitForTimeout(900);
+      console.log('  held:', await page.evaluate(() => window.__held.map(a => (a.effect.target.id || a.effect.target.className.toString().split(' ')[0] || a.effect.target.parentNode.id) + ':' + (a.transitionProperty || 'launch')).join(' ')));
+      for (const ms of (process.env.TOURIN_AT || '100,220,340,480,700,950').split(',')) {
+        await page.evaluate(ms => window.__held.forEach(a => { try { a.currentTime = ms; } catch (e) {} }), +ms); await page.waitForTimeout(1300);
+        await page.screenshot({ path: `${OUT}/shot-${name}-tourin-${ms}.png` });
+      }
+      await page.evaluate(() => window.__held.forEach(a => { try { a.finish(); } catch (e) {} })); await page.waitForTimeout(2500);
+      const vis = () => page.evaluate(() => ['.dock', '.inspector', '.search', '.clock', '.brand', '.statusbar', '.viewctl', '.tour-pill'].map(q => { const el = document.querySelector(q), c = el && getComputedStyle(el); return q + '=' + (c ? c.visibility + '/' + c.opacity : 'none'); }).join(' '));
+      console.log('  in the tour:', await vis(), '| mask:', await page.evaluate(() => { const c = getComputedStyle(document.querySelector('#overlay')); return c.getPropertyValue('--tour-m0') + ' ' + c.getPropertyValue('--tour-m1'); }));
+      await page.screenshot({ path: `${OUT}/shot-${name}-tourin-settled.png` });
+      await page.evaluate(() => window.__tour.pause()); await page.waitForTimeout(900); await page.screenshot({ path: `${OUT}/shot-${name}-tourin-paused.png` });
+      console.log('  header word when paused:', await page.evaluate(() => getComputedStyle(document.querySelector('.tour-state'), '::after').content + ' opacity ' + getComputedStyle(document.querySelector('.tour-state')).opacity));
+      await page.evaluate(() => window.__tour.pause()); await page.waitForTimeout(600);
+      console.log('  header word when playing:', await page.evaluate(() => getComputedStyle(document.querySelector('.tour-state'), '::after').content + ' opacity ' + getComputedStyle(document.querySelector('.tour-state')).opacity));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/shot-${name}-tourin-leaving.png` });
+      await page.waitForTimeout(5000);
+      console.log('  back out:', await vis(), '| touring classes:', await page.evaluate(() => document.querySelector('#app').className), '| spin:', await page.evaluate(() => document.querySelector('#view-spin').getAttribute('aria-pressed')));
+      await page.screenshot({ path: `${OUT}/shot-${name}-tourin-after.png` });
+    }
     if (action === 'tour') {
       await page.waitForTimeout(+process.env.TOUR_WAIT || 5000);
       if (process.env.TOUR_BEFORE) await page.screenshot({ path: `${OUT}/shot-${name}-tour-before.png` });
@@ -360,7 +424,7 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
         console.log('   focus after slash:', await page.evaluate(() => document.activeElement.id), '| cam', JSON.stringify(await page.evaluate(() => window.__ern.cam())));
       }
       if (process.env.TOUR_PACE) {
-        const pace = async label => console.log('   pace:', label, '->', await page.evaluate(() => window.__tour.state().rate + ' "' + document.querySelector('#tour-pace').textContent + '" held=' + document.querySelector('#tour').classList.contains('held') + ' live="' + getComputedStyle(document.querySelector('.tour-live span'), '::after').content + '"'));
+        const pace = async label => console.log('   pace:', label, '->', await page.evaluate(() => window.__tour.state().rate + ' "' + document.querySelector('#tour-pace').textContent + '" held=' + document.querySelector('#tour').classList.contains('held') + ' word="' + getComputedStyle(document.querySelector('.tour-state') || document.querySelector('.tour-live span'), '::after').content + '"'));
         await pace('start'); await page.keyboard.press('.'); await pace('faster'); await page.keyboard.press('.'); await pace('faster again'); await page.keyboard.press(','); await page.keyboard.press(','); await pace('slower twice');
         await page.evaluate(() => document.querySelector('#tour-pace').click()); await pace('button');
         const box = await page.evaluate(() => { const r = document.querySelector('.tour-cap').getBoundingClientRect(); return { x: r.left + 60, y: r.top + 60 }; });
@@ -371,6 +435,8 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
       if (process.env.TOUR_MUSIC) {
         console.log('   music playing after start:', await page.evaluate(() => window.__tour.musicOn() + ' | button ' + document.querySelector('#tour-music').dataset.state + ' | context ' + (window.AudioContext ? 'yes' : 'no')));
         console.log('   music probe', JSON.stringify(await page.evaluate(s => window.__tour.musicProbe(s), +process.env.TOUR_MUSIC)));
+        console.log('   two tours on one echo ', JSON.stringify(await page.evaluate(() => window.__tour.musicShare())));
+        console.log('   the second tour alone', JSON.stringify(await page.evaluate(() => window.__tour.musicShare(true))));
         await page.keyboard.press('m'); await page.waitForTimeout(200);
         console.log('   after M:', await page.evaluate(() => window.__tour.musicOn() + ' | button ' + document.querySelector('#tour-music').dataset.state + ' | saved ' + (JSON.parse(localStorage.getItem('ern:prefs') || '{}').v || {}).tourMusic));
         await page.keyboard.press('m'); await page.waitForTimeout(200);
