@@ -133,7 +133,7 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
 
 (async () => {
   const cloudJpg = await sharp(Buffer.from(Array.from({ length: 128 * 64 }, () => (rnd() < 0.3 ? 255 : 0))), { raw: { width: 128, height: 64, channels: 1 } }).blur(3.2).resize(1024, 512, { kernel: 'cubic' }).jpeg({ quality: 70 }).toBuffer();
-  const ctLog = []; let refuse = true;
+  const ctLog = [], ct = { status: 0, silent: false }; let refuse = true;
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const mode = process.argv[2] || 'ok', action = process.argv[3] || '';
   const only = process.argv[4];
@@ -193,13 +193,15 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
         : json({ response: { aircraft: { type: 'A320-214', manufacturer: 'Airbus', registration: 'G-TEST', registered_owner: 'Test Airways', url_photo_thumbnail: null } } });
       if (h === 'celestrak.org') {
         ctLog.push((q.get('GROUP') || q.get('NAME') || (u.includes('SOCRATES') ? 'socrates' : u.includes('satcat') ? 'satcat' : '?')) + (refuse ? '' : ''));
+        if (ct.silent) return route.abort();
+        if (ct.status) return route.fulfill({ status: ct.status, headers: cors, contentType: 'text/plain', body: 'GP data has not updated since your last successful download' });
         if (mode === 'refused' && refuse && q.get('GROUP') === 'active') return route.fulfill({ status: 403, headers: cors, contentType: 'text/plain', body: 'GP data has not updated since your last successful download' });
         if (u.includes('SOCRATES')) return text(socrates);
         if (u.includes('satcat')) return setTimeout(() => json([{ OBJECT_NAME: 'TEST OBJECT', OBJECT_ID: '1999-025AAA', NORAD_CAT_ID: +q.get('CATNR'), OBJECT_TYPE: +q.get('CATNR') > 43000 ? 'PAY' : +q.get('CATNR') < 25000 ? 'R/B' : 'DEB', OPS_STATUS_CODE: '+', OWNER: 'PRC', LAUNCH_DATE: '1999-05-10', LAUNCH_SITE: 'TAISC', DECAY_DATE: '', PERIOD: 100.1, INCLINATION: 98.6, APOGEE: 880, PERIGEE: 840, RCS: 0.043 }]), 700);
         if (q.get('NAME') === 'DEB' && mode === 'nocors') return route.abort();
         const body = q.get('NAME') === 'DEB' ? debrisAll : q.get('NAME') === 'R/B' ? rocketsAll : q.get('NAME') === 'COSMOS' ? deadCosmos : q.get('NAME') === 'MOLNIYA' ? fam(12000, 'MOLNIYA 1-80', 40, 62.8, 2.0) : q.get('NAME') ? '' : groups[(q.get('GROUP') || '').toLowerCase()] || '';
         if ((q.get('FORMAT') || '').toLowerCase() !== 'csv') return text(body);
-        if (mode === 'nocors') return route.abort();                    /* this mode exercises the two-line fallback */
+        if (mode === 'nocors') return route.abort();                    /* CelesTrak silent: the app rests it and turns to its backups */
         return text(toCsv(body));
       }
       if (h === 'gibs.earthdata.nasa.gov') return GIBS.down ? route.abort() : gibs.answer(u, GIBS, gibsLog).then(r => setTimeout(() => route.fulfill({ contentType: r.contentType, headers: cors, body: r.body }), +process.env.GIBS_WAIT || 250), () => route.abort());
@@ -273,7 +275,29 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
     const tab = async t => { await page.click('.tabs [data-tab="' + t + '"]'); await page.waitForTimeout(300); };
     if (action === 'quake') { await tab('latest'); await page.click('#tab-latest .row[data-sel^="quakes"] >> nth=0'); await page.waitForTimeout(2000); }
     if (action === 'place') { await page.mouse.click(cx + 150, cy + 130); await page.waitForTimeout(2500); if (await page.$('#detail [data-spot]')) { console.log('  the click met a cable:', await page.evaluate(() => document.querySelector('#detail .big').textContent)); await page.click('#detail [data-spot]'); await page.waitForTimeout(2500); }
-      console.log('  place card:', await page.evaluate(() => (document.querySelector('#detail .insp-head .type') || {}).textContent + ' || ' + (document.querySelector('#detail .big') || {}).textContent + ' || ' + [...document.querySelectorAll('#detail [data-slot="pnear"] .row .s')].map(x => x.textContent).join(' / '))); }
+      console.log('  place card:', await page.evaluate(() => (document.querySelector('#detail .insp-head .type') || {}).textContent + ' || ' + (document.querySelector('#detail .big') || {}).textContent + ' || ' + [...document.querySelectorAll('#detail [data-slot="pnear"] .row .s')].map(x => x.textContent).join(' / ')));
+      { if (mode === 'ok') try { await page.waitForFunction(() => { const el = document.querySelector('#detail [data-slot="ppass"]'); return el && el.textContent.length > 20; }, null, { timeout: 60000 }); } catch (e) {}      /* a week of orbits is worked out in slices between frames, which are slow here */
+        const pass = await page.evaluate(() => { const el = document.querySelector('#detail [data-slot="ppass"]'); return el ? el.innerText.replace(/\s*\n\s*/g, ' | ') : null; });
+        console.log('  station passes:', pass ? pass.slice(0, 700) : 'none');
+        if (mode === 'ok' && pass != null && !pass.includes('See a space station from here')) errors.push('place: no space station passes in the card');      /* on a phone the press lands on the sheet, not the globe, so no place opens: the cities below cover it */
+        /* somewhere in the world has a pass this week: find it, read the rows, and follow one to the station */
+        if (mode === 'ok' && process.env.PASS_ROWS !== '0') {
+          let found = null;
+          for (const pl of [[51.5, -0.13, 'London'], [40.7, -74, 'New York'], [-33.9, 151.2, 'Sydney'], [35.7, 139.7, 'Tokyo'], [55.75, 37.6, 'Moscow'], [-34.6, -58.4, 'Buenos Aires'], [19.4, -99.1, 'Mexico City'], [-26.2, 28, 'Johannesburg'], [1.35, 103.8, 'Singapore'], [47.6, -122.3, 'Seattle']]) {
+            await page.evaluate(p => window.__ern.place(p[0], p[1], p[2]), pl);
+            try { await page.waitForFunction(() => { const el = document.querySelector('#detail [data-slot="ppass"]'); return el && el.textContent.length > 20; }, null, { timeout: 60000 }); } catch (e) {}
+            const rows = await page.evaluate(() => [...document.querySelectorAll('#detail [data-slot="ppass"] .row')].map(r => r.innerText.replace(/\s*\n\s*/g, ' | ')));
+            if (rows.length) { found = pl[2]; console.log('  passes over ' + pl[2] + ':\n      ' + rows.join('\n      ')); break; }
+          }
+          if (!found) errors.push('place: no city of ten has a visible station pass this week'); else {
+            await page.evaluate(() => document.querySelector('#detail [data-slot="ppass"]').scrollIntoView({ block: 'center' })); await page.waitForTimeout(700);
+            await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-passes.png` });
+            await page.evaluate(() => document.querySelector('#detail [data-slot="ppass"] .row').click()); await page.waitForTimeout(2000);
+            const kind = await page.evaluate(() => (document.querySelector('#detail .insp-head .type') || {}).textContent);
+            if (!/station/i.test(kind || '')) errors.push('place: a pass row did not open the station, but ' + kind); else console.log('  a pass row opens:', kind);
+          }
+        } }
+    }
     if (action === 'placeload') { await page.mouse.click(cx + 150, cy + 130); await page.waitForTimeout(260); }
     if (action === 'search') { await page.fill('#search-input', 'Mumbai'); await page.waitForTimeout(1500); await page.keyboard.press('Enter'); await page.waitForTimeout(3200); console.log('  place: photos', await page.evaluate(() => document.querySelectorAll('#detail .photos img').length + ' | week ' + document.querySelectorAll('#detail .week > div').length + ' | about: ' + (document.querySelector('#detail [data-slot="pabout"]') || {}).textContent.slice(0, 70) + ' | around: ' + [...document.querySelectorAll('#detail [data-slot="pnear"] .row')].map(r => r.textContent.slice(0, 60)).join(' / '))); await page.evaluate(() => { const sc = document.querySelector('#detail .scroll'); sc.scrollTop = sc.scrollHeight; }); await page.waitForTimeout(500); }
     if (action === 'plane') { await page.evaluate(() => document.querySelector('#view-spin').click()); await page.mouse.move(cx, cy); const hit = await page.evaluate(() => 1); await page.waitForTimeout(200);
@@ -318,6 +342,223 @@ const meteoOne = (la, lo, full) => { const o = { latitude: la, longitude: lo, el
       const loose = await page.evaluate(() => [...document.querySelectorAll('label.layer')].filter(l => l.querySelector('input[type=checkbox]') && l.htmlFor !== l.querySelector('input[type=checkbox]').id).map(l => l.dataset.layer));
       ok('every row with a switch is a label for that switch', loose.length === 0, loose);
       console.log(name, 'toggle errors:', errors.length ? errors.join('\n') : 'none'); await page.close(); continue;
+    }
+    if (action === 'sky') {
+      /* 1. the Sun, the Moon and the brightest stars against PyEphem's answers for fixed moments (tools/make-sky-ref.py) */
+      const book = JSON.parse(fs.readFileSync(path.join(__dirname, 'sky-ref.json'), 'utf8')), ref = book.moments;
+      const arc = (a, b) => { const r = Math.PI / 180, h = Math.sin((b[0] - a[0]) * r / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin((b[1] - a[1]) * r / 2) ** 2; return 2 * Math.asin(Math.min(1, Math.sqrt(h))) / r; };
+      let worst = { sun: 0, moon: 0, km: 0, lit: 0, star: 0, full: 0, dark: 0, drawn: 0 };
+      for (const r of ref) {
+        const s = await page.evaluate(ms => window.__ern.sky(ms), r.at);
+        if (s.n !== 8404) errors.push('sky: ' + s.n + ' stars, expected 8404');
+        worst.sun = Math.max(worst.sun, arc([s.sun.lat, s.sun.lon], r.sun)); worst.moon = Math.max(worst.moon, arc([s.moon.lat, s.moon.lon], r.moon));
+        worst.km = Math.max(worst.km, Math.abs(s.moon.km - r.km)); worst.lit = Math.max(worst.lit, Math.abs(s.moon.frac - r.lit));
+        worst.full = Math.max(worst.full, Math.min(...r.full.map(t => Math.abs(s.full - t))) / 60000); worst.dark = Math.max(worst.dark, Math.min(...r.new.map(t => Math.abs(s.dark - t))) / 60000);
+        s.stars.forEach((st, i) => { worst.star = Math.max(worst.star, arc([st.lat, st.lon], r.stars[i])); });
+        /* and what is drawn is where the numbers say: the Moon's ball, the Sun's glare */
+        worst.drawn = Math.max(worst.drawn, arc([s.moonAt.lat, s.moonAt.lon], [s.moon.lat, s.moon.lon]), arc([s.sunAt.lat, s.sunAt.lon], [s.sun.lat, s.sun.lon]), Math.abs(s.moonAt.r - s.moon.km / 6378.14));
+      }
+      console.log('  sky against PyEphem, worst over', ref.length, 'moments: Sun', worst.sun.toFixed(3) + '°, Moon', worst.moon.toFixed(3) + '° and', Math.round(worst.km), 'km, lit', worst.lit.toFixed(4) + ', stars', worst.star.toFixed(3) + '°, next full moon', worst.full.toFixed(0), 'min, next new moon', worst.dark.toFixed(0), 'min, drawn', worst.drawn.toFixed(4));
+      if (worst.sun > 0.05) errors.push('sky: the Sun is ' + worst.sun.toFixed(3) + '° out');
+      if (worst.moon > 0.45 || worst.km > 1500) errors.push('sky: the Moon is ' + worst.moon.toFixed(3) + '° and ' + Math.round(worst.km) + ' km out');
+      if (worst.lit > 0.01) errors.push('sky: the lit share of the Moon is ' + worst.lit.toFixed(4) + ' out');
+      if (worst.star > 0.06) errors.push('sky: a star is ' + worst.star.toFixed(3) + '° out');
+      if (worst.full > 90 || worst.dark > 90) errors.push('sky: next full or new moon is ' + Math.max(worst.full, worst.dark).toFixed(0) + ' minutes out');
+      if (worst.drawn > 0.001) errors.push('sky: the Moon or the Sun is not drawn where the numbers say');
+      /* station passes against PyEphem: a week over six cities. A pass that only just qualifies (barely high enough, or under a minute) may fall
+         either side of the line in the two programs, so those need not match; every solid one must, to a few seconds and a fraction of a degree.
+         Where a pass begins or ends at the edge of the Earth's shadow the two differ by up to 20 s: PyEphem counts the half-shadow as lit, the app does not. */
+      {
+        let n = 0, tops = 0, dt = 0, del = 0; const solid = p => p[3] >= 11.5 && p[1] - p[0] >= 60000, lines = [];
+        for (const pl of book.places) {
+          const got = (await page.evaluate(a => window.__ern.passes(a[0], a[1], a[2], a[3], a[4], a[5]), [book.orbit[0], book.orbit[1], pl.lat, pl.lon, book.from, book.days])).map(p => [p.t0, p.t1, p.top, p.el]);
+          lines.push(pl.name + ' ' + got.length + '/' + pl.passes.length);
+          const pair = (a, list) => list.find(b => Math.abs(b[2] - a[2]) < 180000);
+          for (const a of pl.passes) { const b = pair(a, got); if (!b) { if (solid(a)) errors.push('sky: ' + pl.name + ': a pass PyEphem finds at ' + new Date(a[0]).toISOString() + ' is missing'); continue; }
+            if (process.env.PASS_DEBUG && (Math.abs(a[0] - b[0]) > 8000 || Math.abs(a[1] - b[1]) > 8000 || Math.abs(a[3] - b[3]) > 0.3)) console.log('   ', pl.name, 'ref', new Date(a[0]).toISOString(), (a[1] - a[0]) / 1000, 's top', a[3], '@', (a[2] - a[0]) / 1000, '| app start', (b[0] - a[0]) / 1000, 'end', (b[1] - a[1]) / 1000, 'top', b[3].toFixed(2), '@', (b[2] - a[0]) / 1000);
+            const inside = p => p[2] - p[0] > 8000 && p[1] - p[2] > 8000;      /* the highest point is a true summit, not the moment it came out of, or went into, the Earth's shadow */
+            n++; dt = Math.max(dt, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])); if (inside(a) && inside(b)) { tops++; del = Math.max(del, Math.abs(a[3] - b[3])); } }
+          for (const b of got) if (solid(b) && !pair(b, pl.passes)) errors.push('sky: ' + pl.name + ': a pass at ' + new Date(b[0]).toISOString() + ' that PyEphem does not find');
+        }
+        console.log('  station passes against PyEphem (found/expected): ' + lines.join(', ') + ' | ' + n + ' matched, worst ' + (dt / 1000).toFixed(0) + ' s; ' + tops + ' summits, worst ' + del.toFixed(2) + '°');
+        if (n < 20) errors.push('sky: only ' + n + ' station passes matched'); if (dt > 25000) errors.push('sky: a station pass is ' + (dt / 1000).toFixed(0) + ' s out'); if (tops < 8) errors.push('sky: only ' + tops + ' summits compared'); if (del > 0.6) errors.push('sky: a station pass is ' + del.toFixed(2) + '° out');
+      }
+      /* the Earth hides whatever is behind it: with the Sun, then the brightest star, dead behind the globe, the middle of the picture stays dark */
+      const through = await page.evaluate(() => [window.__ern.behind('sun'), window.__ern.behind('star')]);
+      console.log('  brightness at the middle of the globe with the Sun behind it:', through[0], '| with Sirius behind it:', through[1]);
+      if (through[0] > 90 || through[1] > 90) errors.push('sky: the ' + (through[0] > 90 ? 'Sun' : 'brightest star') + ' shines through the Earth');
+      await page.waitForTimeout(2500);                                           /* the clock puts the sky back to now */
+      /* 2. the Moon from the Now tab: its card opens and the camera turns until the Moon stands clear of the Earth, in the open */
+      const nowTab = name === 'phone' ? '#tab-now' : '#summary';
+      if (name === 'phone') await tab('now');
+      await page.click(nowTab + ' [data-act="moon"]'); await page.waitForTimeout(+(process.env.SKY_WAIT || 6000));
+      const seen = async label => {
+        const s = await page.evaluate(() => { const s = window.__ern.sky(); const m = s.screen.moon; s.under = m ? (document.elementFromPoint(m.x, m.y) || {}).id || (document.elementFromPoint(m.x, m.y) || {}).tagName : null; return s; });
+        const m = s.screen.moon, e = s.screen.earth, gap = m && e ? Math.hypot(m.x - e.x, m.y - e.y) - s.screen.earthPx - s.screen.moonPx : null;
+        console.log('  ' + label + ': Moon at', m ? Math.round(m.x) + ',' + Math.round(m.y) : 'off screen', 'of', s.screen.w + 'x' + s.screen.h, '| radius', s.screen.moonPx.toFixed(1), 'px | clear of the Earth by', gap == null ? '-' : Math.round(gap), 'px | hidden:', s.screen.hidden, '| under the pointer:', s.under);
+        return { s, m, gap };
+      };
+      let v = await seen('brought into view');
+      if (!v.m || v.s.screen.hidden) errors.push('sky: the Moon is not in view after "' + 'Bring the Moon into view' + '"');
+      else {
+        if (v.gap < 6) errors.push('sky: the Moon is not clear of the Earth (' + Math.round(v.gap) + ' px)');
+        if (v.m.x < v.s.screen.moonPx + 8 || v.m.x > v.s.screen.w - v.s.screen.moonPx - 8 || v.m.y < v.s.screen.moonPx + 8 || v.m.y > v.s.screen.h - v.s.screen.moonPx - 8) errors.push('sky: the Moon is cut off by the edge of the screen');
+        if (v.s.under !== 'gl') errors.push('sky: the Moon is behind ' + v.s.under);
+      }
+      const card = v.s.card || '';
+      console.log('  card:', card.replace(/\s*\n\s*/g, ' | ').slice(0, 520));
+      for (const want of ['The Moon', v.s.moon.name, 'Distance', 'Next full moon', 'Next new moon', 'Overhead at', 'Bring the Moon into view', 'Stand under it']) if (!card.includes(want)) errors.push('sky: the Moon card lacks "' + want + '"');
+      await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-sky-moon.png` });
+      /* 3. close the card, then click the Moon itself: the card comes back and the camera stays put */
+      await page.click('#insp-close'); await page.waitForTimeout(600);
+      if (await page.evaluate(() => !!window.__ern.sky().card)) errors.push('sky: the Moon card did not close');
+      if (v.m && !v.s.screen.hidden) {
+        const before = await page.evaluate(() => window.__ern.cam());
+        await page.mouse.click(v.m.x, v.m.y); await page.waitForTimeout(1500);
+        const after = await page.evaluate(() => ({ card: window.__ern.sky().card, cam: window.__ern.cam() }));
+        if (!after.card) errors.push('sky: clicking the Moon did not open its card, but: ' + await page.evaluate(() => (document.querySelector('#detail .type') || {}).textContent || 'nothing')); else console.log('  clicking the Moon opens its card: yes');
+        if (Math.abs(after.cam.dist - before.dist) > 0.05) errors.push('sky: clicking the Moon moved the camera');
+      }
+      /* 4. "Stand under it" turns the globe to the place the Moon is overhead */
+      if (name === 'phone') await page.evaluate(() => { const b = document.querySelector('#detail [data-go="moon"]'); if (b) b.click(); }); else await page.click('#detail [data-go="moon"]');
+      await page.waitForTimeout(+(process.env.SKY_WAIT || 6000));
+      const under = await page.evaluate(() => ({ cam: window.__ern.camAt(), moon: window.__ern.sky().moon, card: !!window.__ern.sky().card }));
+      console.log('  stand under it: camera over', JSON.stringify(under.cam), 'Moon over', under.moon.lat.toFixed(1) + ',' + under.moon.lon.toFixed(1), '| card still open:', under.card);
+      if (arc([under.cam.lat, under.cam.lon], [under.moon.lat, under.moon.lon]) > 3) errors.push('sky: "Stand under it" did not go to where the Moon is overhead');
+      if (!under.card) errors.push('sky: "Stand under it" closed the Moon card');
+      /* 5. the Moon can be found by name */
+      await page.click('#insp-close').catch(() => {}); await page.fill('#search-input', 'moon'); await page.waitForTimeout(1500); await page.keyboard.press('Enter'); await page.waitForTimeout(2500);
+      if (!(await page.evaluate(() => !!window.__ern.sky().card))) errors.push('sky: searching for "moon" did not open the Moon'); else console.log('  searching for "moon" opens its card: yes');
+      /* 6. the Sun's glare: look from the night side, a little off the line, so it shows past the edge of the Earth */
+      if (process.env.SKY_SUN !== '0') {
+        const sn = v.s.sun, fit = (await page.evaluate(() => window.__ern.cam())).fit;
+        await page.evaluate(p => { window.__ern.look(p[0], p[1]); window.__ern.zoomTo(p[2]); }, [-sn.lat, ((sn.lon + 180 + (name === 'phone' ? 7 : 11) + 540) % 360) - 180, fit * 2.2]); await page.waitForTimeout(3000);
+        await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-sky-sun.png` });
+      }
+    }
+    if (action === 'limits') {
+      /* CelesTrak must never be pestered: each list once, nothing again while a copy is fresh, and after a refusal or silence nothing at all
+         until the rest is over, however often the page is reloaded. Whatever was saved keeps the satellites on the globe meanwhile. */
+      const lists = () => ctLog.filter(x => x !== 'satcat');
+      const again = async (label, want) => {
+        const from = ctLog.length;
+        await page.reload();
+        try { await page.waitForFunction(() => document.querySelector('#boot-go').textContent === 'Start exploring', null, { timeout: 150000 }); } catch (e) { errors.push('limits: boot did not finish (' + label + ')'); }
+        await page.evaluate(() => document.querySelector('#boot-go').click()); await page.waitForTimeout(+(process.env.LIMITS_WAIT || 9000));
+        const asked = ctLog.slice(from), st = await page.evaluate(() => ({
+          counts: [...document.querySelectorAll('.layer')].filter(e => /Starlink|Space debris|Spent rocket|Space stations/.test(e.querySelector('.name').textContent)).map(e => e.querySelector('.name').textContent + '=' + e.querySelector('.count').textContent).join(', '),
+          hold: JSON.parse(localStorage.getItem('ern:ct-hold') || 'null'), src: window.__ern.src(['sats', 'junk', 'socrates']) }));
+        const rest = st.hold && st.hold.v.until > Date.now() ? Math.round((st.hold.v.until - Date.now()) / 60000) + ' min (' + st.hold.v.why + ')' : 'none';
+        console.log('  ' + label + ': asked CelesTrak ' + asked.length + ' time' + (asked.length === 1 ? '' : 's') + (asked.length ? ' [' + asked.join(', ') + ']' : '') + ' | resting: ' + rest + '\n      ' + st.counts + '\n      ' + st.src.join(' | '));
+        if (want.asked != null && asked.length !== want.asked) errors.push('limits: ' + label + ': CelesTrak was asked ' + asked.length + ' times, expected ' + want.asked);
+        if (want.max != null && asked.length > want.max) errors.push('limits: ' + label + ': CelesTrak was asked ' + asked.length + ' times, more than ' + want.max);
+        if (new Set(asked).size !== asked.length) errors.push('limits: ' + label + ': a list was asked for twice');
+        if (want.rest != null && (rest !== 'none') !== want.rest) errors.push('limits: ' + label + ': resting is ' + rest);
+        if (want.drawn) for (const k of want.drawn) if (!new RegExp(k + '=[\\d,]*\\d|' + k + '=Live').test(st.counts)) errors.push('limits: ' + label + ': ' + k + ' is not on the globe');
+        if (want.note && !st.src.join(' | ').includes(want.note)) errors.push('limits: ' + label + ': no note saying "' + want.note + '"');
+        return st;
+      };
+      const age = hours => page.evaluate(h => new Promise(done => {
+        localStorage.removeItem('ern:ct-asked'); try { const c = JSON.parse(localStorage.getItem('ern:calls')); if (c) { c.t -= h * 3600000; localStorage.setItem('ern:calls', JSON.stringify(c)); } } catch (e) {}
+        const rq = indexedDB.open('earth-right-now', 1);
+        rq.onsuccess = () => { const st = rq.result.transaction('kv', 'readwrite').objectStore('kv'), cur = st.openCursor(); let n = 0;
+          cur.onsuccess = () => { const c = cur.result; if (!c) return done(n); if (String(c.key).startsWith('gp:')) { const v = c.value; v.t -= h * 3600000; c.update(v); n++; } c.continue(); }; };
+      }), hours);
+      const wipe = () => page.evaluate(() => new Promise(done => { const rq = indexedDB.open('earth-right-now', 1); rq.onsuccess = () => { const tx = rq.result.transaction('kv', 'readwrite'); tx.objectStore('kv').clear(); tx.oncomplete = () => done(); }; }));
+      const all = ['Starlink', 'Space debris', 'Spent rocket stages', 'Space stations'];
+      const first = lists();
+      console.log('  first visit: asked CelesTrak ' + first.length + ' times [' + first.join(', ') + ']');
+      if (new Set(first).size !== first.length) errors.push('limits: first visit: a list was asked for twice');
+      await page.waitForTimeout(1500);
+      await again('reload straight away', { asked: 0, rest: false, drawn: all });
+      console.log('  saved lists made 30 hours old:', await age(30)); ct.status = 403;
+      await again('reload, lists stale, CelesTrak refusing (403)', { asked: 1, rest: true, drawn: all, note: 'saved' });
+      await again('reload again while it rests', { asked: 0, rest: true, drawn: all });
+      await again('and again', { asked: 0, rest: true, drawn: all });
+      await wipe();
+      await again('resting with nothing saved at all', { asked: 0, rest: true, drawn: ['Starlink', 'Space stations'], note: 'backup' });
+      await page.evaluate(() => localStorage.removeItem('ern:ct-hold')); ct.status = 0;
+      await again('rest over, CelesTrak answering', { max: first.length, rest: false, drawn: all });
+      await age(30); ct.silent = true;
+      await again('lists stale, CelesTrak silent (shut out)', { asked: 1, rest: true, drawn: all, note: 'saved' });
+      await again('reload again while it rests', { asked: 0, rest: true, drawn: all });
+      ct.silent = false;
+    }
+    if (action === 'cinema') {
+      /* keys, cinema mode, a saved picture and a copied link */
+      const st = () => page.evaluate(() => { const vis = s => { const e = document.querySelector(s), c = e && getComputedStyle(e); return !!e && c.visibility !== 'hidden' && +c.opacity > 0.5 && c.display !== 'none'; };
+        return { cinema: document.querySelector('#app').classList.contains('cinema'), dock: vis('#dock'), insp: vis('#inspector'), bar: vis('.viewctl'), cap: vis('#cine'), cam: window.__ern.cam(), at: window.__ern.camAt(), spin: window.__ern.spinning(), toast: document.querySelector('#toast').hasAttribute('data-off') ? '' : document.querySelector('#toast').textContent,
+          time: document.querySelector('#cine-time').textContent, what: document.querySelector('#cine-what').textContent, kind: (document.querySelector('#detail .type') || {}).textContent || '' }; });
+      const key = async (k, ms) => { await page.keyboard.press(k); await page.waitForTimeout(ms || 1200); return st(); };
+      if (name !== 'phone') { await tab('guide'); await page.evaluate(() => { const p = document.querySelector('#tab-guide'); p.scrollTop = p.scrollHeight; }); await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-guide-keys.png` });
+        if ((await page.evaluate(() => document.querySelectorAll('#tab-guide .keys > div').length)) < 10) errors.push('guide: the list of keys is missing'); await tab('layers'); }
+      /* a short drag on the globe: the keyboard must come away from the tab that was just pressed */
+      await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 12, cy, { steps: 3 }); await page.mouse.up(); await page.waitForTimeout(600);
+      { const had = await page.evaluate(() => { const e = document.activeElement; return e.tagName + (e.id ? '#' + e.id : '') + (e.closest('.dock, .inspector') ? ' in a panel' : '') + (e.className ? ' .' + String(e.className).split(' ')[0] : ''); }); if (name !== 'phone' && / in a panel/.test(had)) errors.push('keys: pressing the globe did not take the keyboard from the panels (' + had + ')'); else console.log('  after a press on the globe the keyboard is with:', had); }
+      const a0 = await st();
+      if (name === 'phone') {
+        const a = await key('c'); if (a.cinema) errors.push('cinema: a phone should not go into cinema mode');
+        if (!(await page.$('#tab-now [data-do="link"]'))) errors.push('cinema: the phone has no share button'); else console.log('  phone: share and picture buttons are in the Now list; cinema mode is not offered');
+      } else {
+        let a = await key('s'); if (a.spin === a0.spin) errors.push('keys: S did not toggle the spin'); a = await key('s');
+        a = await key('ArrowRight', 2500); const moved = ((a.at.lon - a0.at.lon + 540) % 360) - 180; if (!(moved > 5)) errors.push('keys: the right arrow did not turn the globe (' + moved.toFixed(1) + '°)');
+        a = await key('ArrowUp', 2500); if (!(a.at.lat > a0.at.lat + 3)) errors.push('keys: the up arrow did not tilt the globe');
+        const z0 = a.cam.target; a = await key('+', 1500); if (!(a.cam.target < z0)) errors.push('keys: + did not zoom in'); a = await key('-', 1500); a = await key('o', 2500); if (!(a.cam.target > z0 * 1.5)) errors.push('keys: O did not pull back'); a = await key('r', 2500);
+        if (Math.abs(a.cam.target - a.cam.fit) > 0.05) errors.push('keys: R did not reset the view');
+        a = await key('m', 5000); if (!/Moon/.test(a.kind)) errors.push('keys: M did not open the Moon, but ' + a.kind); await key('Escape', 800); await key('r', 2500);
+        console.log('  keys: S, arrows, +, -, O, R, M all answer');
+        const fit0 = a.cam.fit;
+        a = await key('c', 3500);
+        console.log('  cinema on:', JSON.stringify({ cinema: a.cinema, dock: a.dock, inspector: a.insp, toolbar: a.bar, caption: a.cap, time: a.time, what: a.what, fit: [fit0, a.cam.fit], target: a.cam.target }));
+        if (!a.cinema || a.dock || a.insp || a.bar || !a.cap) errors.push('cinema: the panels did not step aside');
+        if (!/UTC$/.test(a.time)) errors.push('cinema: the caption has no clock');
+        if (!(a.cam.fit < fit0) || Math.abs(a.cam.target - a.cam.fit) > 0.05) errors.push('cinema: the globe did not grow to fill the window');
+        await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-cine-on.png` });
+        await page.waitForTimeout(3200);
+        if (!(await page.evaluate(() => document.querySelector('#app').classList.contains('cine-idle')))) errors.push('cinema: the buttons did not fade after the pointer went still');
+        await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-cine-idle.png` });
+        await page.mouse.move(cx + 40, cy + 40); await page.waitForTimeout(300);
+        if (await page.evaluate(() => document.querySelector('#app').classList.contains('cine-idle'))) errors.push('cinema: moving the pointer did not bring the buttons back');
+        await page.mouse.move(cx + 60, cy + 50); await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-cine-ctl.png` });
+        /* a picture: the download arrives, is the size of the drawing, and is not blank */
+        const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }).catch(() => null), page.keyboard.press('p')]);
+        if (!dl) errors.push('picture: nothing was saved'); else {
+          const saved = { path: `${OUT}/shot-${name}-${mode}-picture.png` }; await dl.saveAs(saved.path);
+          const buf = fs.readFileSync(saved.path), w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+          console.log('  picture:', dl.suggestedFilename(), w + 'x' + h, buf.length, 'bytes');
+          if (!/^karman-\d{8}-\d{4}utc\.png$/.test(dl.suggestedFilename())) errors.push('picture: odd file name ' + dl.suggestedFilename());
+          if (w !== vp.width * (+process.env.DPR || 1) || h !== vp.height * (+process.env.DPR || 1) || buf.length < 60000) errors.push('picture: wrong size or blank');
+        }
+        await page.waitForTimeout(600);
+        a = await key('l', 900); console.log('  link:', await page.evaluate(() => window.__ern.link()), '| notice:', a.toast);
+        if (!/copied|address bar/.test(a.toast)) errors.push('link: no notice after copying');
+        if (!/#@-?\d+\.\d\d,-?\d+\.\d\d,\d+\.\d\d$/.test(await page.evaluate(() => window.__ern.link()))) errors.push('link: odd link');
+        a = await key('Escape', 2500);
+        console.log('  cinema off:', JSON.stringify({ cinema: a.cinema, dock: a.dock, inspector: a.insp, toolbar: a.bar, caption: a.cap, fit: a.cam.fit }));
+        if (a.cinema || !a.dock || !a.insp || !a.bar || a.cap) errors.push('cinema: the panels did not come back');
+        if (Math.abs(a.cam.fit - fit0) > 0.01) errors.push('cinema: the globe did not go back to its size');
+        await page.click('#view-cinema'); await page.waitForTimeout(1500); if (!(await st()).cinema) errors.push('cinema: the toolbar button did not work');
+        /* rest the pointer on the buttons: they must not fade from under it, however long it stays */
+        const box = await page.evaluate(() => { const r = document.querySelector('.cine-ctl [data-do="cinema"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+        await page.mouse.move(box.x - 40, box.y - 40); await page.mouse.move(box.x, box.y); await page.waitForTimeout(4200);
+        if (await page.evaluate(() => document.querySelector('#app').classList.contains('cine-idle'))) errors.push('cinema: the buttons faded from under the pointer');
+        await page.mouse.click(box.x, box.y); await page.waitForTimeout(1500); if ((await st()).cinema) errors.push('cinema: its own button did not leave it');
+      }
+    }
+    if (action === 'linked') {
+      /* arriving by a link (HASH=@lat,lon,dist,view): after the opening the globe turns to that view; read off the status bar what is under the middle of the screen */
+      const want = (process.env.HASH || '').replace(/^@/, '').split(',');
+      await page.waitForTimeout(+(process.env.LINK_WAIT || 9000));
+      await page.mouse.move(cx + 1, cy + 1); await page.waitForTimeout(700); await page.mouse.move(cx, cy); await page.waitForTimeout(1200);
+      const got = await page.evaluate(() => ({ cursor: document.querySelector('#cursor').textContent, view: (document.querySelector('#overlay-pick') || {}).value, legend: (document.querySelector('#legend') || {}).hidden === false }));
+      console.log('  arrived by link ' + want.join(',') + ': middle of the screen is over', got.cursor, '| NASA view:', got.view || 'none');
+      const m = /([\d.]+)° ([NS]), ([\d.]+)° ([EW])/.exec(got.cursor || '');
+      if (!m) errors.push('linked: could not read where the globe is looking'); else {
+        const lat = +m[1] * (m[2] === 'S' ? -1 : 1), lon = +m[3] * (m[4] === 'W' ? -1 : 1);
+        if (Math.abs(lat - +want[0]) > 1.5 || Math.abs(((lon - +want[1] + 540) % 360) - 180) > 1.5) errors.push('linked: looking at ' + lat + ',' + lon + ' instead of ' + want[0] + ',' + want[1]);
+      }
+      if ((want[3] || '') !== (got.view || '')) errors.push('linked: NASA view is ' + got.view + ', expected ' + want[3]);
+      await page.screenshot({ path: `${OUT}/shot-${name}-${mode}-linked.png` });
     }
     if (action === 'energy') {
       /* power stations, LNG terminals and gas pipelines: off to begin with, unpacked when switched on, findable, clickable, and gone again when switched off */

@@ -27,6 +27,12 @@ This is a good-faith summary, not legal advice. If you plan to reuse any of this
 - **Licence:** [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). Recommended citations: "Global Integrated Power Tracker, Global Energy Monitor, April 2025 release" and "Global Gas Infrastructure Tracker, Global Energy Monitor, May 2025 release".
 - **What that asks of you:** credit Global Energy Monitor and say that the data was changed, as above. These are not the newest editions: see `data/README.md` for how to bring them up to date.
 
+### The stars
+
+- **Files:** `data/stars.csv`, `assets/stars.b64`.
+- **Origin:** the [Yale Bright Star Catalogue](http://tdc-www.harvard.edu/catalogs/bsc5.html), 5th revised edition (D. Hoffleit and W. H. Warren Jr, 1991), as converted to JSON by [Bretton Wade](https://github.com/brettonw/YaleBrightStarCatalog). Kept: the 8,404 stars of magnitude 6.5 or brighter, each with its place, brightness and colour temperature.
+- **Licence:** the catalogue is in the public domain. The JSON conversion is under the MIT licence.
+
 ### Map data
 
 | File | Origin | Terms |

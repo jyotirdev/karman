@@ -45,7 +45,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#radio-play')) return playRadio(selected);
   if (deepClick(e)) return;
   const go = e.target.closest('[data-go]');
-  if (go) { const p = go.dataset.go === 'moon' ? moon : sun; select(null); return flyTo(p.lat, p.lon); }
+  if (go) { const p = go.dataset.go === 'moon' ? moon : sun; if (!(selected && selected.layer === 'moon')) select(null); return flyTo(p.lat, p.lon); }
   const open = e.target.closest('[data-open]');
   if (open) return select({ layer: open.dataset.open, id: open.dataset.open });
   const el = e.target.closest('[data-sel]');
@@ -72,6 +72,9 @@ canvas.addEventListener('pointerdown', e => {
     if (touches.size === 2) { const t = Array.from(touches.values()); pinch = { d: Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y), h: zoomTarget - 1 }; down = null; return; }
   }
   down = { x: e.clientX, y: e.clientY, t: performance.now() }; fly = null; canvas.classList.add('dragging'); tip.setAttribute('data-off', '');
+  /* a press on the globe takes the keyboard away from whatever panel control had it, as a press on any plain part of a page does
+     (the camera controls swallow the press before the browser can do this itself) */
+  const had = document.activeElement; if (had && had !== document.body && had.blur) had.blur();
 });
 window.addEventListener('pointermove', e => {
   if (!touches.has(e.pointerId)) return;
@@ -89,9 +92,11 @@ window.addEventListener('pointerup', e => {
   if (moved > 6) { setSpin(false); return; }
   if (!quick || e.target !== canvas || !boot.entered) return;
   camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-  const p = local(e), hit = pick(p.x, p.y);
+  const p = local(e), g = globePoint(p.x, p.y);
+  if (!g && moonUnder(p.x, p.y)) return selectMoon();
+  const hit = pick(p.x, p.y);
   if (hit) return select(hit);
-  const g = globePoint(p.x, p.y), cab = g && lineNear(g.lat, g.lon, pixelReach(e.pointerType === 'touch' ? 9 : 4.5));
+  const cab = g && lineNear(g.lat, g.lon, pixelReach(e.pointerType === 'touch' ? 9 : 4.5));
   if (cab) { cab.lat = g.lat; cab.lon = g.lon; cab.v = ll(g.lat, g.lon, 1.002); return select(cab, { stay: true }); }      /* a cable or pipeline is marked where it was clicked */
   if (g) openPlace(g.lat, g.lon); else if (selected) select(null);
 });
@@ -103,7 +108,7 @@ canvas.addEventListener('pointermove', e => {
   requestAnimationFrame(() => {
     hoverQueued = false;
     if (!hoverXY || down) return;
-    const g = globePoint(hoverXY.x, hoverXY.y), hit = pick(hoverXY.x, hoverXY.y) || (g && lineNear(g.lat, g.lon, pixelReach(4.5)));
+    const g = globePoint(hoverXY.x, hoverXY.y), hit = (!g && moonUnder(hoverXY.x, hoverXY.y)) || pick(hoverXY.x, hoverXY.y) || (g && lineNear(g.lat, g.lon, pixelReach(4.5)));
     canvas.classList.toggle('hit', !!hit);
     cursorEl.textContent = g ? fmtLL(g.lat, g.lon) : '';
     if (hit) { tip.innerHTML = swatch(hit.layer) + '<span>' + esc(hit.title || kindOf(hit)) + '</span>'; tip.style.transform = 'translate3d(' + Math.min(hoverXY.x, view.w - 320) + 'px,' + hoverXY.y + 'px,0)'; tip.removeAttribute('data-off'); }
@@ -338,6 +343,7 @@ function tick() {
   const now = Date.now(), d = new Date(now);
   Object.assign(sun, subsolar(d)); Object.assign(moon, moonInfo(d));
   ll(sun.lat, sun.lon, 1, U.uSun.value);
+  skyTick(d); cineTick(d);
   $('#clock-time').textContent = d.toISOString().slice(11, 19) + ' UTC';
   $('#clock-date').textContent = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   if (boot.done && !document.hidden && !(tour.on && tour.phase === 'fly')) {      /* while the tour is in flight, refreshes wait a few seconds for it to land, so nothing interrupts the motion */
@@ -409,6 +415,7 @@ function frame(now) {
   controls.update();
   if (tour.on) tourLook(); else trackSpin(now);
   stepFine(now);
+  skyFrame();
   const zk = view.zoomK = clamp((view.fit - dist) / (view.fit - controls.minDistance), 0, 1);
   U.uZoom.value = clamp(Math.pow(view.fit / dist, 0.4), 0.7, 1.9) * (view.phone ? 0.85 : 1);
   dotsU.uFade.value = 0.85 - 0.6 * zk;
@@ -454,6 +461,42 @@ requestAnimationFrame(now => { lastFrame = now; frame(now); canvas.classList.add
 if (location.hash === '#test') window.__ern = { pick: (k, i) => select(layers[k].items[i || 0]), cam: () => ({ dist: +camera.position.length().toFixed(3), target: +zoomTarget.toFixed(3), fit: +view.fit.toFixed(3), quality: quality.level, entered: boot.entered, introDone: intro.done, under: (document.elementFromPoint(view.w / 2, view.h / 2) || {}).id }) };   /* lets the automated checks open an item directly */
 /* test only: show the opening (t seconds in) or the moment of going live (t seconds after), held still */
 if (location.hash === '#test') Object.assign(window.__ern, {
+  camAt: () => camLL(),
+  link: () => viewLink(),
+  spinning: () => controls.autoRotate,
+  place: (lat, lon, name) => openPlace(lat, lon, name),
+  /* visible passes of a satellite, given its two lines, over a place from a moment on (checked against PyEphem by the test) */
+  passes: (l1, l2, lat, lon, from, days) => stationPasses(satellite.twoline2satrec(l1, l2), lat, lon, from, days),
+  src: keys => keys.map(k => k + ' ' + SOURCES[k].state + (SOURCES[k].note ? ' (' + SOURCES[k].note + ')' : '')),
+  /* stand with the Sun, or the brightest star, dead behind the Earth and read the middle of the picture: it must be the dark globe, not the thing shining through it */
+  behind(what) {
+    sky.stars.updateMatrixWorld();
+    const a = sky.stars.geometry.attributes.position, dir = what === 'sun' ? U.uSun.value.clone() : new THREE.Vector3(a.getX(0), a.getY(0), a.getZ(0)).applyMatrix4(sky.stars.matrixWorld).normalize();
+    const keep = camera.position.clone(), u = [globeU.uLights, globeU.uOver, globeU.uClouds, globeU.uPulseK], was = u.map(x => x.value); u.forEach(x => { x.value = 0; });
+    camera.position.copy(dir).multiplyScalar(-keep.length()); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); skyFrame();
+    const hid = scene.children.filter(o => o.visible && o !== globe && o !== sky.stars && o !== sky.sun && o !== sky.moon); hid.forEach(o => { o.visible = false; });
+    const shown = sky.sun.material.uniforms.uShow.value; sky.sun.material.uniforms.uShow.value = 1; sky.sun.visible = true;      /* at full strength, whatever the fade is doing */
+    renderer.render(scene, camera); sky.sun.material.uniforms.uShow.value = shown;
+    const gl = renderer.getContext(), px = new Uint8Array(100), k = gl.drawingBufferHeight / view.h; project(new THREE.Vector3());
+    gl.readPixels(Math.round(scr.x * k) - 2, Math.round((view.h - scr.y) * k) - 2, 5, 5, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let top = 0; for (let i = 0; i < 100; i += 4) top = Math.max(top, px[i], px[i + 1], px[i + 2]);
+    hid.forEach(o => { o.visible = true; }); u.forEach((x, i) => { x.value = was[i]; }); camera.position.copy(keep); camera.lookAt(0, 0, 0);
+    return top;
+  },
+  /* the sky as drawn: where the Sun, the Moon and the brightest stars are overhead, at this moment or at a given one (the next tick of the clock puts it back) */
+  sky: ms => {
+    if (ms) { const d = new Date(ms); Object.assign(sun, subsolar(d)); Object.assign(moon, moonInfo(d)); ll(sun.lat, sun.lon, 1, U.uSun.value); skyTick(d); }
+    const a = sky.stars.geometry.attributes.position, raw = atob(ASSET.stars), mag = i => raw.charCodeAt(i * 6 + 4);
+    sky.stars.updateMatrixWorld(); camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    const star = i => { const b = k => raw.charCodeAt(i * 6 + k), p = vecLL(new THREE.Vector3(a.getX(i), a.getY(i), a.getZ(i)).applyMatrix4(sky.stars.matrixWorld));
+      return { ra: (b(0) | b(1) << 8) / 65536 * 360, dec: (b(2) | b(3) << 8) / 65535 * 180 - 90, mag: b(4) / 30 - 1.5, lat: p.lat, lon: p.lon }; };
+    const order = Array.from({ length: a.count }, (_, i) => i).sort((x, y) => mag(x) - mag(y) || x - y), seen = project(sky.moonAt), at = { x: scr.x, y: scr.y }, centre = project(new THREE.Vector3()) && { x: scr.x, y: scr.y };
+    return { at: sky.at, n: a.count, sun: Object.assign({}, sun), sunAt: vecLL(sky.sun.position), moon: Object.assign({}, moon), moonAt: Object.assign(vecLL(sky.moonAt), { r: sky.moonAt.length() }),
+      stars: order.slice(0, 14).map(star), full: +moonNext(180, new Date(sky.at)), dark: +moonNext(0, new Date(sky.at)),
+      screen: { w: view.w, h: view.h, moon: seen ? at : null, hidden: occluded(sky.moonAt), moonPx: view.h / (2 * Math.tan(camera.fov * D2R / 2)) * sky.moonR / camera.position.distanceTo(sky.moonAt),
+        earth: centre, earthPx: view.h / (2 * Math.tan(camera.fov * D2R / 2)) * Math.tan(Math.asin(1 / camera.position.length())) },
+      card: selected && selected.layer === 'moon' ? document.querySelector('#detail').innerText : null };
+  },
   openAt(t) {
     let tr = 0; for (let x = 0; x < t; x += 0.01) tr += (46 * Math.pow(1 - clamp((x - 0.1) / 2, 0, 1), 2.4) + 0.3) * 0.01;
     intro.freeze = t; intro.done = false; intro.last = 0; opening.gone = false; opening.travel = tr; openStars.g.visible = true; bootRing.mesh.visible = true;

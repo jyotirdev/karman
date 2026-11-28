@@ -89,7 +89,7 @@ async function firstOf(src, providers) {
   }
   throw err;
 }
-const errNote = e => (e && e.status ? 'error ' + e.status : 'unreachable');
+const errNote = e => (e && e.rest ? e.message : e && e.status ? 'error ' + e.status : 'unreachable');
 
 /* small remembered values (per browser; everything still works without storage) */
 const store = {
@@ -137,17 +137,31 @@ function subsolar(date) {
   const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) * R2D, dec = Math.asin(Math.sin(e) * Math.sin(L)) * R2D;
   return { lat: dec, lon: wrapLon(ra - gmstDeg(d)) };
 }
+/* The Moon, by the Astronomical Almanac's short series: good to a third of a degree and about 1,200 km, checked against PyEphem.
+   Returns the place it is overhead, how far it is, how much of it is lit and the name of its phase; el is how far round from the
+   Sun it has gone since new moon, in degrees. */
 function moonInfo(date) {
-  const d = (date.getTime() - J2000) / 864e5;
-  const L = (218.316 + 13.176396 * d) * D2R, M = (134.963 + 13.064993 * d) * D2R, F = (93.272 + 13.229350 * d) * D2R;
-  const lon = L + 6.289 * D2R * Math.sin(M), lat = 5.128 * D2R * Math.sin(F), e = 23.439 * D2R;
+  const d = (date.getTime() - J2000) / 864e5, T = d / 36525;
+  const s = (a, b) => Math.sin((a + b * T) * D2R), c = (a, b) => Math.cos((a + b * T) * D2R);
+  const lon = (218.32 + 481267.881 * T + 6.29 * s(135.0, 477198.87) - 1.27 * s(259.3, -413335.36) + 0.66 * s(235.7, 890534.22) + 0.21 * s(269.9, 954397.74) - 0.19 * s(357.5, 35999.05) - 0.11 * s(186.5, 966404.03)) * D2R;
+  const lat = (5.13 * s(93.3, 483202.02) + 0.28 * s(228.2, 960400.89) - 0.28 * s(318.3, 6003.15) - 0.17 * s(217.6, -407332.21)) * D2R;
+  const par = (0.9508 + 0.0518 * c(135.0, 477198.87) + 0.0095 * c(259.3, -413335.36) + 0.0078 * c(235.7, 890534.22) + 0.0028 * c(269.9, 954397.74)) * D2R;
+  const e = (23.439 - 3.6e-7 * d) * D2R;
   const x = Math.cos(lat) * Math.cos(lon);
   const y = Math.cos(e) * Math.cos(lat) * Math.sin(lon) - Math.sin(e) * Math.sin(lat);
   const z = Math.sin(e) * Math.cos(lat) * Math.sin(lon) + Math.cos(e) * Math.sin(lat);
   const el = (((lon - sunEcl(d)) * R2D) % 360 + 360) % 360;
   const name = el < 12 || el > 348 ? 'New moon' : el < 78 ? 'Waxing crescent' : el < 102 ? 'First quarter' : el < 168 ? 'Waxing gibbous'
     : el < 192 ? 'Full moon' : el < 258 ? 'Waning gibbous' : el < 282 ? 'Last quarter' : 'Waning crescent';
-  return { lat: Math.asin(z) * R2D, lon: wrapLon(Math.atan2(y, x) * R2D - gmstDeg(d)), frac: (1 - Math.cos(el * D2R)) / 2, name };
+  return { lat: Math.asin(z) * R2D, lon: wrapLon(Math.atan2(y, x) * R2D - gmstDeg(d)), km: 6378.14 / Math.sin(par), el, frac: (1 - Math.cos(el * D2R)) / 2, name };
+}
+/* when the Moon next reaches a point in its cycle (0 new, 90 first quarter, 180 full, 270 last quarter), to the nearest few minutes */
+function moonNext(target, from) {
+  const gap = t => ((moonInfo(new Date(t)).el - target) % 360 + 540) % 360 - 180;       /* negative before the moment, positive after */
+  let a = from.getTime(), b = a;
+  for (let i = 0; i < 124; i++) { b = a + 6 * 3600000; if (gap(a) < 0 && gap(b) >= 0) break; a = b; }
+  for (let i = 0; i < 20; i++) { const m = (a + b) / 2; if (gap(m) < 0) a = m; else b = m; }
+  return new Date(b);
 }
 
 /* ---------- geometry ---------- */

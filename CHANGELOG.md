@@ -2,6 +2,41 @@
 
 Notable changes to Kármán. Dates are UTC.
 
+## 1.3.0 (2026-11-28)
+
+### Fixed
+
+- **Satellites and debris that stopped loading after many reloads.** CelesTrak, which publishes the orbits, refuses a list that is asked for twice within two hours, and shuts out an address that keeps asking after a refusal. Kármán used to answer a refusal by asking again in another format, and asked afresh on every reload, which is exactly what gets an address shut out. Every request to CelesTrak now goes through one gate: one at a time, never the same list twice in two hours, and after a refusal (two hours) or no answer (thirty minutes) nothing at all, remembered across reloads. Meanwhile the last saved copy keeps the satellites on the globe, and the Sources tab says what happened and when CelesTrak will be asked again.
+- **A saved copy is used however old it is**, up to a fortnight (a day and a half for the two space stations, which are steered). Before, a copy past its freshness was thrown away even when nothing newer could be had.
+- **Catalogue records are remembered** for a month, so clicking the same satellite twice asks once.
+- **Stars no longer show through the planet.** They were drawn over the night side of the globe.
+
+### The sky
+
+- **The real stars.** The random dots are gone. In their place are the 8,404 stars the eye can see under a dark sky, from the Yale Bright Star Catalogue, each in its true place with its real brightness and colour, turning once a day as they do overhead. Orion, the Plough and the Southern Cross are there to be found.
+- **The Moon,** where it really is and as far away as it really is (about thirty Earths), lit by the Sun so that it shows tonight's phase, with its dark seas sketched in. It is drawn three times its true size so that it is more than a dot. Click it, press <kbd>M</kbd>, search for it, or use its row under Right now: the view pulls back until Earth and Moon stand side by side, and a card gives the phase, the share lit, the distance, the age, and the next full and new moon.
+- **The Sun's glare** marks where the Sun is. Pull back and look from the night side to watch it stand beside the dark Earth.
+- **A better Moon formula.** The Moon's place came from a single term and could be six degrees out. It now uses the Astronomical Almanac's short series and adds distance.
+
+### See a space station yourself
+
+- Click any place and its card lists the passes of the ISS and Tiangong over the coming week that will actually be **visible** there: the station high enough, in sunlight, and the sky dark. Each gives the local time, how long, which way across the sky and how high. Click a pass to go to the station.
+
+### Cinema mode, pictures and links
+
+- **Cinema mode** (<kbd>C</kbd>, or the new button in the view controls): the panels step aside, the globe grows to fill the window, and only the name and the time remain. Move the pointer for the controls; <kbd>Esc</kbd> brings the panels back. Not offered on phones, where the tour does this job.
+- **Save a picture** (<kbd>P</kbd>): the globe as it is, at the screen's full sharpness, with the date and any NASA view written in the corner.
+- **Copy a link to this view** (<kbd>L</kbd>): the link reopens Kármán looking at the same place from the same height with the same NASA view on. On a phone it opens the share sheet instead.
+- **More keys:** <kbd>S</kbd> spin, <kbd>O</kbd> every orbit, <kbd>R</kbd> reset, <kbd>F</kbd> full screen, <kbd>+</kbd> <kbd>−</kbd> zoom, arrow keys to turn the globe. The Guide tab lists them. A press on the globe now takes the keyboard away from the panels, so the keys work straight after.
+
+### For contributors
+
+- `src/app/35-sky.js` (stars, Moon, Sun) and `src/app/89-cinema.js` (cinema mode, pictures, links, keys) are new. Station passes are `stationPasses` in `50-space.js`; the CelesTrak gate is `celestrak` in the same file, and nothing else may fetch from celestrak.org.
+- `tools/make-stars.py` packs the star catalogue (`data/stars.csv` to `assets/stars.b64`, 67 KB).
+- **The astronomy is checked against PyEphem.** `tools/make-sky-ref.py` writes `tests/sky-ref.json`: where the Sun, the Moon and the brightest stars stand at six moments up to 2034, and a week of station passes over six cities. `tests/smoke.js ok sky` compares the app with it: Sun within 0.005°, Moon within 0.16° and 850 km, stars within 0.01°, thirty passes within 20 seconds and their summits within 0.01°.
+- `tests/smoke.js` gains `sky`, `limits` (reloads the page again and again while CelesTrak refuses, then goes silent, and counts the requests), `cinema` and `linked`; `place` now reads the station passes.
+- The page grows from 1.36 MB to 1.47 MB, mostly the stars.
+
 ## 1.2.0 (2026-11-20)
 
 ### Fixed

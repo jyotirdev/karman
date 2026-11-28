@@ -1,6 +1,6 @@
 {
   "name": "karman",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Real-time 3D visualisation of global activity and critical infrastructure, from earthquakes, wildfires and severe storms to satellites, power stations, pipelines, nuclear facilities and undersea cables, built on open public data.",
   "homepage": "https://jyotirdev.github.io/karman/",
   "repository": {
@@ -14,9 +14,9 @@
   "license": "MIT",
   "scripts": {
     "build": "node tools/build.js && node --check .build/app.check.js",
-    "data": "python3 tools/make-data.py && python3 tools/make-energy.py",
+    "data": "python3 tools/make-data.py && python3 tools/make-energy.py && python3 tools/make-stars.py",
     "serve": "python3 -m http.server 8080",
-    "test": "node tests/tones.js && node tests/smoke.js ok quake && node tests/smoke.js offline boot"
+    "test": "node tests/tones.js && node tests/smoke.js ok quake && node tests/smoke.js ok sky && node tests/smoke.js offline boot"
   },
   "devDependencies": {
     "hls.js": "1.5.20",

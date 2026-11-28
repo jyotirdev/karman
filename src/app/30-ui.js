@@ -47,7 +47,7 @@ function setStatus(key, state, note) {
 }
 /* mark a feed as healthy, noting when a backup provider or a saved copy stood in */
 function okStatus(src, data) {
-  if (data && data.__stale) setStatus(src, 'warn', 'provider unreachable, showing a copy saved ' + ago(data.__stale));
+  if (data && data.__stale) setStatus(src, 'warn', (data.__why || 'provider unreachable') + ', showing a copy saved ' + ago(data.__stale));
   else setStatus(src, 'ok', SOURCES[src].via ? 'backup: ' + SOURCES[src].via : '');
 }
 const stateWord = s => (s.state === 'ok' ? (s.note ? s.note + ', ' : '') + (s.at ? 'updated ' + ago(s.at) : 'live') : s.state === 'load' ? (s.at ? 'refreshing' : 'connecting') : s.state === 'err' ? (s.note || 'unreachable')
@@ -353,7 +353,7 @@ const DETAILS = {
         aurora.ready && Math.abs(it.lat) > 45 ? ['Aurora chance', Math.round(aurora.at(it.lat, it.lon)) + '%'] : null,
         ['Coordinates', esc(fmtLL(it.lat, it.lon))]
       ],
-      extra: '<div ' + slotAttr('pweek') + '></div><div ' + slotAttr('pnear') + '></div><div ' + slotAttr('pphotos') + '></div><div ' + slotAttr('pcountry') + '>' + (onLand(it) ? '<h3>Country</h3><span class="skel block" style="height:40px"></span>' : '') + '</div><div ' + slotAttr('pwiki') + '>' + (onLand(it) ? '<h3>Nearby on Wikipedia</h3><div class="links">' + SK(96, 28) + SK(130, 28) + SK(80, 28) + '</div>' : '') + '</div>'
+      extra: '<div ' + slotAttr('pweek') + '></div><div ' + slotAttr('ppass') + '></div><div ' + slotAttr('pnear') + '></div><div ' + slotAttr('pphotos') + '></div><div ' + slotAttr('pcountry') + '>' + (onLand(it) ? '<h3>Country</h3><span class="skel block" style="height:40px"></span>' : '') + '</div><div ' + slotAttr('pwiki') + '>' + (onLand(it) ? '<h3>Nearby on Wikipedia</h3><div class="links">' + SK(96, 28) + SK(130, 28) + SK(80, 28) + '</div>' : '') + '</div>'
     };
   },
   swx() {
@@ -432,7 +432,8 @@ function renderSummary() {
   if ((extra.epic || []).length) { const e = extra.epic[0]; h += '<button class="row pic" data-sel="epic:epic"><img src="' + esc(e.thumb) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span><span class="t">Earth photographed from deep space</span><span class="s">Taken ' + agoSpan(e.time) + ' by NASA’s EPIC camera</span></span></button>'; }
   h += summaryMore();
   h += '<button class="row" data-go="sun"><span class="swatch glyph">' + icon('sun') + '</span><span><span class="t">Noon is here</span><span class="s">Sun overhead at <span ' + live('sun-pos') + '>…</span></span></span></button>';
-  h += '<button class="row" data-go="moon"><span class="swatch glyph">' + icon('moon') + '</span><span><span class="t"><span ' + live('moon-name') + '>Moon</span></span><span class="s">Overhead at <span ' + live('moon-pos') + '>…</span></span></span></button>';
+  h += '<button class="row" data-act="moon"><span class="swatch glyph">' + icon('moon') + '</span><span><span class="t"><span ' + live('moon-name') + '>Moon</span></span><span class="s">Overhead at <span ' + live('moon-pos') + '>…</span></span></span></button>';
+  h += '<div class="insp-actions share"><button class="btn" data-do="link">' + (view.phone && navigator.share ? 'Share this view' : 'Copy a link to this view') + '</button><button class="btn" data-do="shot">Save a picture</button></div>';
   summaryEl.innerHTML = h + '</div>';
   refreshLive(); markSelectedRows();
 }

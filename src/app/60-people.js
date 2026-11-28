@@ -321,6 +321,32 @@ function weatherBackup(it) {
       hourly: { temperature_2m: ts.slice(0, 24).map(x => x.data.instant.details.air_temperature) } };
   });
 }
+/* ---------- the place card: when a space station can be seen from here ---------- */
+const WAY = { N: 'north', NE: 'north-east', E: 'east', SE: 'south-east', S: 'south', SW: 'south-west', W: 'west', NW: 'north-west' };
+const passCache = {};
+async function loadPasses(it, off, rough) {
+  const list = layers.stations.items.filter(s => s.rec);
+  if (!list.length || !window.satellite) return slot(it, 'ppass', '');
+  const head = '<h3>See a space station from here</h3>', note = text => slot(it, 'ppass', head + '<p class="muted">' + text + '</p>');
+  if (list.every(s => Date.now() - s.epoch > 4 * 864e5)) return note('Not available just now: the orbit data on hand is several days old, too old to predict a pass to the minute.');
+  const key = it.lat.toFixed(2) + ',' + it.lon.toFixed(2);
+  let c = passCache[key];
+  if (!c || Date.now() - c.at > 30 * 60000) {
+    c = passCache[key] = { at: Date.now(), list: [] };
+    for (const s of list) { if (Date.now() - s.epoch > 4 * 864e5) continue; for (const p of await stationPasses(s.rec, it.lat, it.lon, Date.now(), 7)) c.list.push(Object.assign(p, { id: s.id, name: s.short })); }
+    c.list.sort((a, b) => a.t0 - b.t0);
+  }
+  const next = c.list.filter(p => p.t1 > Date.now()).slice(0, 4);
+  if (!next.length) return note(Math.abs(it.lat) > 65 ? 'The space stations never climb high enough to be seen from this far ' + (it.lat > 0 ? 'north' : 'south') + '.'
+    : 'No good passes in the coming week. A station is only visible while it is in sunlight and the sky here is dark; its orbit drifts, so that changes within a couple of weeks.');
+  const when = t => new Date(t + off * 1000).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  /* one line each, short enough not to be cut off: how long, which way across the sky, how high */
+  slot(it, 'ppass', head + next.map(p => {
+    const mins = Math.max(1, Math.round((p.t1 - p.t0) / 60000)), a = WAY[compass(p.az0)], b = WAY[compass(p.az1)];
+    return '<button class="row" data-sat="' + p.id + '">' + swatch('stations') + '<span><span class="t">' + esc(when(p.t0)) + ' <small>' + esc(p.name) + '</small></span><span class="s">' +
+      mins + ' min, ' + (a === b ? 'in the ' + a : a + ' to ' + b) + ', up to ' + Math.round(p.el) + '°' + (p.el >= 70 ? ', almost overhead' : '') + '</span></span></button>';
+  }).join('') + '<p class="muted">Times are ' + (rough ? 'roughly ' : '') + 'local to this place and good to about a minute. Look for a bright, steady light crossing the sky; it can fade out part-way as it enters the Earth’s shadow.</p>');
+}
 function loadPlace(it) {
   const q = 'latitude=' + it.lat.toFixed(3) + '&longitude=' + it.lon.toFixed(3), land = onLand(it);
   loadPlaceName(it, land);
@@ -332,6 +358,7 @@ function loadPlace(it) {
       Math.round(c.apparent_temperature) + '°, humidity ' + Math.round(c.relative_humidity_2m) + '%, cloud ' + Math.round(c.cloud_cover) + '%</small></span></div>' +
       (d.hourly && d.hourly.temperature_2m && d.hourly.temperature_2m.length > 3 ? '<h3>Temperature, next 24 hours</h3>' + spark(d.hourly.temperature_2m.slice(0, 24), v => Math.round(v) + '°') : ''));
     slot(it, 'ptime', '<span data-clock="' + off + '">' + clockAt(off) + '</span> <small>' + (d.backup ? 'approximate' : utcLabel(off)) + '</small>');
+    loadPasses(it, off, !!d.backup);
     slot(it, 'pwind', Math.round(c.wind_speed_10m) + ' km/h from the ' + compass(c.wind_direction_10m));
     if (d.daily && d.daily.sunrise && d.daily.sunrise[0]) slot(it, 'psunrise', esc(d.daily.sunrise[0].slice(11, 16)) + ' and ' + esc(d.daily.sunset[0].slice(11, 16)));
     else slot(it, 'psunrise', d.backup ? 'Unavailable' : 'No sunrise or sunset today');
@@ -340,7 +367,7 @@ function loadPlace(it) {
     slot(it, 'pweek', weekHTML(dy));
     slot(it, 'ptoday', dy.temperature_2m_max && dy.temperature_2m_max[0] != null ? 'High ' + Math.round(dy.temperature_2m_max[0]) + '°, low ' + Math.round(dy.temperature_2m_min[0]) + '°' +
       (dy.precipitation_probability_max && dy.precipitation_probability_max[0] != null ? ', ' + dy.precipitation_probability_max[0] + '% chance of rain' : '') : 'No forecast');
-  }).catch(() => { slot(it, 'wx', '<p class="muted">The weather service could not be reached.</p>'); ['ptime', 'ptoday', 'pwind', 'psunrise', 'pelev'].forEach(k => slot(it, k, 'Unavailable')); });
+  }).catch(() => { slot(it, 'wx', '<p class="muted">The weather service could not be reached.</p>'); ['ptime', 'ptoday', 'pwind', 'psunrise', 'pelev'].forEach(k => slot(it, k, 'Unavailable')); loadPasses(it, Math.round(it.lon / 15) * 3600, true); });
   getJSON('https://air-quality-api.open-meteo.com/v1/air-quality?' + q + '&current=us_aqi,pm2_5,uv_index', 15000).then(d => {
     const a = d.current && d.current.us_aqi, uv = d.current && d.current.uv_index;
     if (a == null) slot(it, 'paqi', 'No data here');
@@ -384,14 +411,15 @@ liveFns.push(o => {
 /* ---------- search: places and satellites. Local matches appear instantly; the place service fills in behind a loading state ---------- */
 (function () {
   const wrap = $('#search'), input = $('#search-input'), box = $('#search-results');
-  let timer = 0, seq = 0, flat = [], idx = -1, state = { q: '', local: [], sats: [], radio: [], infra: [], remote: [], loading: false, failed: false };
+  let timer = 0, seq = 0, flat = [], idx = -1, state = { q: '', sky: [], local: [], sats: [], radio: [], infra: [], remote: [], loading: false, failed: false };
   const hide = () => { box.hidden = true; input.setAttribute('aria-expanded', 'false'); idx = -1; };
   const opt = (r, i) => '<button role="option" data-i="' + i + '" class="' + (i === idx ? 'is-on' : '') + '">' + (r.sw ? swatch(r.sw) : '<span class="swatch pin"></span>') +
     '<span><span class="t">' + esc(r.name) + '</span><span class="s">' + esc(r.sub) + '</span></span></button>';
   function paint() {
     if (document.activeElement !== input) return;       /* results that arrive after the visitor has moved on stay closed */
-    flat = state.local.concat(state.remote, state.sats, state.radio, state.infra);
+    flat = state.sky.concat(state.local, state.remote, state.sats, state.radio, state.infra);
     let h = '', i = 0;
+    if (state.sky.length) { h += '<h3>In the sky</h3>'; for (const r of state.sky) h += opt(r, i++); }
     if (!state.q) h += '<h3>Popular places</h3>';
     else if (state.local.length || state.remote.length || state.loading) h += '<h3>Places</h3>';
     for (const r of state.local.concat(state.remote)) h += opt(r, i++);
@@ -418,6 +446,9 @@ liveFns.push(o => {
       if (isOn('pipes')) { let n = 0; for (const x of pipes.list) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: 'Gas pipeline, ' + num(x.km) + ' km', item: x, sw: 'pipes' }); if (++n >= 2) break; } } }
       if (isOn('cables')) { let n = 0; for (const x of cables.list) { if (x.title.toLowerCase().includes(ql)) { state.infra.push({ name: x.title, sub: 'Undersea cable' + (x.year ? ', ' + (x.planned ? 'planned for ' : 'since ') + x.year : ''), item: x, sw: 'cables' }); if (++n >= 3) break; } } }
     }
+    const mq = ql.replace(/^the /, '');
+    state.sky = [];
+    if (mq.length >= 2 && 'moon'.startsWith(mq)) state.sky.push({ name: 'The Moon', sub: moon.name + ', ' + Math.round(moon.frac * 100) + '% lit', item: moonItem(), sw: 'moon', go: () => { selectMoon(); seeMoon(); } });
     if (ql.length >= 2) for (const key of ['stations'].concat(SAT_KEYS)) {
       for (const it of layers[key].items) { if ((it.title + ' ' + (it.short || '')).toLowerCase().includes(ql)) { state.sats.push({ name: it.title, sub: LAYERS[key].one, item: it, sw: key }); if (state.sats.length >= 4) break; } }
       if (state.sats.length >= 4) break;
@@ -427,7 +458,7 @@ liveFns.push(o => {
     if (!r) return;
     clearTimeout(timer); seq++; state.loading = false; wrap.classList.remove('loading');
     input.value = r.name; hide(); input.blur();
-    if (r.item) select(r.item); else openPlace(r.lat, r.lon, r.name, r.sub);
+    if (r.go) r.go(); else if (r.item) select(r.item); else openPlace(r.lat, r.lon, r.name, r.sub);
   }
   function query() {
     const q = input.value.trim();

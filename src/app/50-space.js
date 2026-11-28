@@ -50,22 +50,58 @@ async function parseGPcsv(text) {
 }
 const netFail = e => !!e && !e.status && (e.name === 'TypeError' || e.name === 'AbortError');       /* no answer at all, as opposed to an answer that says no */
 const isGPcsv = text => /^\s*"?OBJECT_NAME/.test(text || '');
-/* one CelesTrak query (a named group, or every object whose name contains a word), kept in the browser so the provider is asked rarely */
-async function fetchGP(query, maxAge) {
-  const key = 'gp:' + query, base = 'https://celestrak.org/NORAD/elements/gp.php?' + query;
-  let text = await bigStore.get(key, maxAge || 6 * 3600000), rows = null;
-  if (text) { try { rows = isGPcsv(text) ? await parseGPcsv(text) : parseTLE(text); } catch (e) {} }
-  if (!rows || !rows.length) {
-    try { text = await getJSON(base + '&FORMAT=csv', 90000, true); rows = await parseGPcsv(text); }
-    catch (e) {
-      if (e && e.status === 403) throw e;              /* asked too often: do not ask again in another form */
-      text = await getJSON(base + '&FORMAT=tle', 90000, true);
-      if (!/^1 \d{5}/m.test(text)) throw new Error('not orbit data');
-      rows = parseTLE(text);
+/* ---------- CelesTrak, asked politely ----------
+   CelesTrak serves orbit data to the whole world from one small site, and protects itself: a list asked for twice within two hours
+   is refused, and an address that goes on asking after a refusal is shut out altogether. So every request to it goes through here:
+   one at a time with a pause between, never the same list twice in two hours, and after a refusal or no answer nothing at all for
+   a while. All of it is remembered across page loads, so refreshing the page can never turn into a stream of requests. */
+const CT = { until: 0, why: '', last: 0, queue: Promise.resolve(), asked: store.get('ct-asked') || {} };
+(function () { const h = store.get('ct-hold'); if (h && h.until > Date.now()) { CT.until = h.until; CT.why = h.why; } })();
+const ctResting = () => CT.until > Date.now();
+function ctRest(ms, why) { CT.until = Date.now() + ms; CT.why = why; store.set('ct-hold', { until: CT.until, why }); dirty.sources = true; }
+function ctError(text) { const e = new Error(text); e.rest = true; return e; }
+const clockTime = t => new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const ctNote = () => 'CelesTrak ' + CT.why + '; asking again after ' + clockTime(CT.until);
+/* list: a name for the request when it is one of the big lists that may be fetched only once in two hours */
+function celestrak(url, ms, asText, list) {
+  const run = async () => {
+    if (ctResting()) throw ctError(ctNote());
+    if (list && Date.now() - (CT.asked[list] || 0) < 2 * 3600000) throw ctError('CelesTrak gives out each list once in two hours');
+    const wait = CT.last + 500 - Date.now();
+    if (wait > 0) await sleep(wait);
+    CT.last = Date.now();
+    try {
+      const data = await getJSON(url, ms, asText, { tries: 1 });
+      if (list) { for (const k in CT.asked) if (Date.now() - CT.asked[k] > 2 * 3600000) delete CT.asked[k]; CT.asked[list] = Date.now(); store.set('ct-asked', CT.asked); }
+      return data;
+    } catch (e) {
+      if (e && e.status) ctRest(e.status >= 500 ? 30 * 60000 : 2 * 3600000, e.status >= 500 ? 'is having trouble' : 'turned a request down');
+      else if (netFail(e) && navigator.onLine !== false) ctRest(30 * 60000, 'did not answer');      /* a shut-out address gets silence, not an error, so silence counts too */
+      throw e;
     }
+  };
+  const p = CT.queue.then(run);
+  CT.queue = p.catch(() => {});
+  return p;
+}
+/* One CelesTrak list (a named group, or every object whose name contains a word). A copy is kept in the browser and used while it is fresh.
+   When CelesTrak cannot or should not be asked, the last copy still draws a true enough picture for days, so it is used rather than nothing. */
+async function fetchGP(query, maxAge, maxStale) {
+  const key = 'gp:' + query, kept = await bigStore.getAny(key), age = kept ? Date.now() - kept.t : Infinity;
+  const read = async text => { try { const rows = isGPcsv(text) ? await parseGPcsv(text) : parseTLE(text); return rows && rows.length ? rows : null; } catch (e) { return null; } };
+  let rows = kept && age < (maxAge || 6 * 3600000) ? await read(kept.v) : null;
+  if (rows) return rows;
+  try {
+    const text = await celestrak('https://celestrak.org/NORAD/elements/gp.php?' + query + '&FORMAT=csv', 90000, true, query);
+    rows = await parseGPcsv(text);
     bigStore.set(key, text);
+    return rows;
+  } catch (e) {
+    rows = kept && age < (maxStale || 14 * 864e5) ? await read(kept.v) : null;
+    if (!rows) throw e;
+    rows.__stale = kept.t; rows.__why = ctResting() ? ctNote() : '';
+    return rows;
   }
-  return rows;
 }
 const fetchGroup = (group, maxAge) => fetchGP('GROUP=' + group, maxAge);
 /* sort the full catalogue into layers a visitor can make sense of: by fleet name first, then by how high it flies */
@@ -215,6 +251,7 @@ function stepSatLayer(key, now) {
 }
 /* the whole active catalogue: one download, sorted into layers */
 let satCats = null, satLoading = null;
+let satList = null;
 function loadAllSatellites() {
   if (satLoading) return satLoading;
   if (!window.satellite) return Promise.resolve();
@@ -222,15 +259,15 @@ function loadAllSatellites() {
   keys.forEach(k => { if (!layers[k].sat) setCountLoading(k); });
   satLoading = (async () => {
     try {
-      if (!satCats) satCats = categorize(await firstOf('sats', [['CelesTrak', () => fetchGroup('active')],
+      if (!satCats) satCats = categorize(satList = await firstOf('sats', [['CelesTrak', () => fetchGroup('active')],
         ['SatNOGS', async () => { const d = await getJSON('https://db.satnogs.org/api/tle/?format=json', 60000); if (!Array.isArray(d) || !d.length) throw new Error('empty'); return d.map(x => ({ name: String(x.tle0 || '').replace(/^0 /, '').trim(), l1: x.tle1, l2: x.tle2 })).filter(x => x.l1 && x.l2); }]]));
       const waits = [];
       for (const k of keys) { if (layers[k].sat) continue; if (layers[k].on) waits.push(startSatLayer(k, satCats[k])); else setCount(k, satCats[k].length.toLocaleString()); }
       await Promise.race([Promise.all(waits), sleep(25000)]);
-      SOURCES.sats.fullOK = true; okStatus('sats');
+      SOURCES.sats.fullOK = true; okStatus('sats', satList);
     } catch (e) {
       keys.forEach(k => { if (!layers[k].sat) setCount(k, '–'); });
-      setStatus('sats', layers.stations.items.length ? 'warn' : 'err', 'full catalogue ' + errNote(e));
+      setStatus('sats', layers.stations.items.length ? 'warn' : 'err', e && e.rest ? errNote(e) : 'full catalogue ' + errNote(e));
     }
     satLoading = null;
   })();
@@ -250,7 +287,7 @@ async function ensureSatLayer(key) {
   const src = JUNK_SRC[key];
   L.loadingSat = true; setCountLoading(key); setStatus('junk', 'load');
   try {
-    let all = [], partial = false;
+    let all = [], partial = false, why = null, stale = null;
     const seen = new Set();
     if (src.notActive) {                              /* "dead" means not in the catalogue of working satellites, so that catalogue has to be in first */
       if (!satCats) await loadAllSatellites();
@@ -261,23 +298,24 @@ async function ensureSatLayer(key) {
     let silent = 0;
     for (const q of src.qs) {
       try {
-        for (const t of await fetchGP(q, 24 * 3600000)) {
+        const list = await fetchGP(q, 24 * 3600000);
+        if (list.__stale) stale = list;
+        for (const t of list) {
           const id = +(t.id || t.l1.slice(2, 7));
           if (seen.has(id) || !src.test.test(t.name) || (src.notActive && /\b(DEB|R\/B)\b/.test(t.name))) continue;
           seen.add(id); all.push(t);
         }
         silent = 0;
-      } catch (e) { if (netFail(e) && ++silent >= 2) break; }      /* two unanswered requests in a row: stop asking rather than queue up more */
-      if (src.qs.length > 1) await sleep(350);
+      } catch (e) { why = e; if (netFail(e) && ++silent >= 2) break; }      /* two unanswered requests in a row: stop asking rather than queue up more */
     }
     if (!all.length) {
       partial = true;
-      for (const g of src.groups) { try { all = all.concat(await fetchGroup(g, 24 * 3600000)); } catch (e) { if (netFail(e) && !all.length) break; } await sleep(300); }
+      for (const g of src.groups) { try { const list = await fetchGroup(g, 24 * 3600000); if (list.__stale) stale = list; all = all.concat(list); } catch (e) { why = why || e; if (netFail(e) && !all.length) break; } }
     }
-    if (!all.length) throw new Error('unreachable');
+    if (!all.length) throw why || new Error('unreachable');
     L.partial = partial;
     await Promise.race([startSatLayer(key, all), sleep(30000)]);
-    setStatus('junk', partial ? 'warn' : 'ok', partial ? 'full list unavailable, showing the four largest debris clouds' : '');
+    if (stale) okStatus('junk', stale); else setStatus('junk', partial ? 'warn' : 'ok', partial ? 'full list unavailable, showing the four largest debris clouds' : '');
   } catch (e) { setCount(key, '–'); setStatus('junk', 'err', errNote(e)); }
   L.loadingSat = false;
 }
@@ -299,11 +337,11 @@ function stationItem(def, t) {
 async function loadSatellites() {
   if (!window.satellite) return setStatus('sats', 'err', 'orbit library did not load');
   setStatus('sats', 'load');
-  let items = [];
+  let items = [], stale = null;
   try {
-    const tles = await fetchGroup('stations', 3 * 3600000);
+    const tles = await fetchGP('GROUP=stations', 3 * 3600000, 36 * 3600000);       /* a station is steered, so an old orbit goes wrong in a day or two: past that the backups are better */
     for (const def of STATIONS) { const t = tles.find(x => +(x.id || x.l1.slice(2, 7)) === def[0]); if (t) items.push(stationItem(def, t)); }
-    SOURCES.sats.note = '';
+    SOURCES.sats.note = ''; if (tles.__stale) stale = tles;
   } catch (e) {
     try {                                             /* backups: two other public sources of station orbits */
       items = await firstOf('sats', [['CelesTrak', () => Promise.reject(e)],
@@ -316,7 +354,7 @@ async function loadSatellites() {
   if (!items.length) return setStatus('sats', 'err', 'no usable orbit data');
   updateStations(Date.now(), items);
   applyItems('stations', items); setCount('stations', 'Live'); orbitDrawnAt = 0;
-  setStatus('sats', SOURCES.sats.state === 'warn' ? 'warn' : 'ok', SOURCES.sats.note);
+  if (stale) okStatus('sats', stale); else setStatus('sats', SOURCES.sats.state === 'warn' ? 'warn' : 'ok', SOURCES.sats.note);
 }
 function sunlitAt(v) { const d = v.dot(U.uSun.value); return !(d < 0 && v.lengthSq() - d * d < 1); }
 function updateStations(now, list) {
@@ -328,6 +366,62 @@ function updateStations(now, list) {
   }
   if (!list) layers.stations.movePositions();
 }
+/* ---------- when a place can see a space station ----------
+   A station shows as a bright, steady light crossing the sky when three things hold at once: it is well above the horizon,
+   it is in sunlight, and the watcher is in the dark. That happens for an hour or two after dusk and before dawn.
+   This steps a station's orbit through the coming days and keeps the stretches where all three hold.
+   Checked against PyEphem (tools/make-sky-ref.py): times agree to a few seconds, heights to a fraction of a degree. */
+const PASS = { coarse: 40000, fine: 4000, high: 10, dusk: -6 };          /* step sizes in ms; how high the station must climb and how far down the Sun must be, in degrees */
+async function stationPasses(rec, lat, lon, from, days) {
+  const la = lat * D2R, lo = lon * D2R, up = [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)];
+  const east = [-Math.sin(lo), Math.cos(lo), 0], north = [-Math.sin(la) * Math.cos(lo), -Math.sin(la) * Math.sin(lo), Math.cos(la)];
+  const at = satellite.geodeticToEcf({ longitude: lo, latitude: la, height: 0 }), date = new Date(0);
+  /* where the station is in this place's sky at a moment, whether sunlight reaches it, and how high the Sun is here */
+  const look = t => {
+    date.setTime(t);
+    const pv = satellite.propagate(rec, date);
+    if (!pv || !pv.position || !isFinite(pv.position.x)) return null;
+    const p = satellite.eciToEcf(pv.position, satellite.gstime(date)), dx = p.x - at.x, dy = p.y - at.y, dz = p.z - at.z, r = Math.hypot(dx, dy, dz);
+    return { t, el: Math.asin((dx * up[0] + dy * up[1] + dz * up[2]) / r) * R2D, dx, dy, dz, p };
+  };
+  const more = (s) => {
+    const sub = subsolar(new Date(s.t)), a = sub.lat * D2R, o = sub.lon * D2R, sun = [Math.cos(a) * Math.cos(o), Math.cos(a) * Math.sin(o), Math.sin(a)];
+    const along = s.p.x * sun[0] + s.p.y * sun[1] + s.p.z * sun[2];
+    s.lit = along > 0 || s.p.x * s.p.x + s.p.y * s.p.y + s.p.z * s.p.z - along * along > EARTH_KM * EARTH_KM;       /* outside the cylinder of shadow behind the Earth */
+    s.sun = Math.asin(up[0] * sun[0] + up[1] * sun[1] + up[2] * sun[2]) * R2D;
+    s.az = (Math.atan2(s.dx * east[0] + s.dy * east[1], s.dx * north[0] + s.dy * north[1] + s.dz * north[2]) * R2D + 360) % 360;
+    return s;
+  };
+  const out = [], end = from + days * 864e5;
+  let was = look(from), n = 0;
+  for (let t = from + PASS.coarse; t <= end; t += PASS.coarse) {
+    if (++n % 1500 === 0) await sleep(0);                            /* a week is some fifteen thousand steps: breathe now and then so the globe never stutters */
+    const now = look(t);
+    if (!now) return out;
+    if (was && now.el > 0 && was.el <= 0) {                            /* it has just risen: walk through the pass finely */
+      const seen = [];
+      let hid = false, cut = false, s = was;
+      for (let f = was.t; f < was.t + 20 * 60000; f += PASS.fine) {
+        s = look(f); if (!s) break;
+        if (f > now.t && s.el < 0) break;
+        if (s.el < PASS.high) continue;
+        more(s);
+        if (s.sun > PASS.dusk) continue;
+        if (s.lit) seen.push(s); else if (seen.length) cut = true; else hid = true;       /* in the Earth's shadow before it showed, or after */
+        if (cut) break;
+      }
+      if (seen.length && seen[seen.length - 1].t - seen[0].t >= 40000) {
+        const top = seen.reduce((b, x) => (x.el > b.el ? x : b), seen[0]);
+        out.push({ t0: seen[0].t, t1: seen[seen.length - 1].t, top: top.t, el: top.el, az0: seen[0].az, az1: seen[seen.length - 1].az, azTop: top.az, appears: hid, fades: cut });
+      }
+      t = Math.max(t, s ? s.t : t);
+      was = look(t); continue;
+    }
+    was = now;
+  }
+  return out;
+}
+
 function drawOrbit(rec, now) {
   const pos = orbitLine.geometry.attributes.position.array, al = orbitLine.geometry.attributes.aAlpha.array, v = new THREE.Vector3();
   const period = 2 * Math.PI / rec.no, from = -0.13 * period, to = period * 0.98, past = Math.round(ORBIT_N * 0.13 / 1.11);

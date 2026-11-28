@@ -11,7 +11,7 @@ renderer.setClearColor(0x040405, 1);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, 0.02, 400);
-const view = { w: 1, h: 1, fit: 4.4, phone: false, zoomK: 0 };
+const view = { w: 1, h: 1, fit: 4.4, phone: false, zoomK: 0, bare: false };      /* bare: the panels are put away (cinema mode), so the globe may use the whole window */
 const U = {
   uSun: { value: new THREE.Vector3(1, 0, 0) }, uTime: { value: 0 }, uPx: { value: quality.max },
   uZoom: { value: 1 }, uScale: { value: 1000 }
@@ -26,26 +26,7 @@ const introU = { build: { value: BUILT }, reveal: { value: 1.3 }, wire: { value:
   keep: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] };      /* parts of the screen the flying dots thin out over, because there are words there: the read-out, the list of feeds and the heading */
 const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat); blank.needsUpdate = true;
 
-/* stars: sparse, fixed, deterministic */
-(function () {
-  let seed = 20261119;
-  const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const n = 2200, pos = new Float32Array(n * 3), al = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const u = rnd() * 2 - 1, t = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-    pos[i * 3] = 200 * s * Math.cos(t); pos[i * 3 + 1] = 200 * u; pos[i * 3 + 2] = 200 * s * Math.sin(t);
-    al[i] = 0.06 + Math.pow(rnd(), 4) * 0.7;
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aAlpha', new THREE.BufferAttribute(al, 1));
-  const m = new THREE.ShaderMaterial({
-    uniforms: { uPx: U.uPx }, transparent: true, depthWrite: false, depthTest: false,
-    vertexShader: 'attribute float aAlpha; uniform float uPx; varying float vA; void main(){ vA=aAlpha; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_PointSize=(0.9+aAlpha*2.0)*uPx; }',
-    fragmentShader: 'varying float vA; void main(){ vec2 p=gl_PointCoord*2.-1.; float r=dot(p,p); if(r>1.) discard; gl_FragColor=vec4(vec3(.86,.88,.95), vA*(1.-r)); }'
-  });
-  const p = new THREE.Points(g, m); p.frustumCulled = false; p.renderOrder = -1; scene.add(p);
-})();
+/* the stars, the Moon and the Sun are in 35-sky.js */
 
 /* ---------- the globe surface ----------
    One greyscale shader: shaded relief on land lit by the real sun, a sun glint on the sea,
@@ -588,7 +569,7 @@ function resize() {
   if (view.phone) camera.setViewOffset(w, h, 0, Math.round(h * 0.15), w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   const t = Math.tan(camera.fov * D2R / 2);
-  const radiusPx = view.phone ? Math.min(0.22 * h, 0.45 * w) : Math.min(0.39 * h, 0.46 * Math.max(w - 700, 380));
+  const radiusPx = view.phone ? Math.min(0.22 * h, 0.45 * w) : view.bare ? Math.min(0.42 * h, 0.46 * w) : Math.min(0.39 * h, 0.46 * Math.max(w - 700, 380));
   view.fit = 1 / Math.sin(Math.atan(radiusPx / (h / 2) * t));
   controls.maxDistance = view.fit * 4.6;
   U.uScale.value = h * renderer.getPixelRatio() / (2 * t);

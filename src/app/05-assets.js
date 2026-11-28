@@ -11,6 +11,9 @@ const ASSET = {
   cables: __CABLES__,
   /* Power reactors: IAEA PRIS records as compiled by GeoNuclearData 0.17.17 (March 2024). Open Database License.
      One row per site: name, latitude, longitude, country code, country, then its reactors (name, status, type, model, MW, year building began, year it started, year it closed, IAEA id). */
+  /* The stars the naked eye can see under a dark sky (magnitude 6.5 and brighter), from the Yale Bright Star Catalogue (public domain), packed by tools/make-stars.py:
+     six bytes a star: right ascension, declination, brightness, colour temperature. */
+  stars: '__STARS__',
   nuclear: __NUCLEAR__,
   /* Power stations, gas pipelines and LNG terminals: Global Energy Monitor's trackers, the larger ones only (tools/make-energy.py). CC BY 4.0.
      plants, per fuel: name, latitude, longitude, MW running, first year, units, MW being built, country, kind, then the wiki page when it is not just the name.

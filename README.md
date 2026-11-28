@@ -16,6 +16,8 @@
 
 It is **one HTML file**. No server, no account, no API key, no tracking. Your browser asks each public data provider directly and draws what comes back.
 
+Around the planet is the real sky: every star the eye can see in its true place, the Moon where it is tonight and showing tonight's phase, and the Sun's glare where the Sun is.
+
 The name is the Kármán line: 100 km up, where the sky is said to end and space to begin. This is the planet as seen from there.
 
 <p align="center">
@@ -44,7 +46,11 @@ The name is the Kármán line: 100 km up, where the sky is said to end and space
 - **Follow a cable or open a reactor.** Every undersea cable and nuclear site has a card: who owns it, how old it is, what it does.
 - **Drape a measurement over the planet.** Pick a NASA satellite view in the Layers tab: last night's city lights, a volcano's gas, an algae bloom, a flood. A note says which days it is from, and when you zoom in and stop, the picture sharpens.
 - **Switch on the power.** Under Infrastructure: the world's largest power stations by fuel, and the gas pipelines and LNG terminals that feed them.
-- **Search.** Press <kbd>/</kbd> for a city, a country, a satellite, a radio station, a cable, a nuclear site, a power station or a pipeline.
+- **Search.** Press <kbd>/</kbd> for a city, a country, a satellite, a radio station, a cable, a nuclear site, a power station, a pipeline or the Moon.
+- **Find the Moon.** Press <kbd>M</kbd>, or click the Moon itself. The view pulls back until the Earth and the Moon stand side by side, at their true distance apart, and a card gives the phase, the distance and the next full and new moon.
+- **See the space station with your own eyes.** Click any place: its card lists the coming week's passes of the ISS and Tiangong that will actually be visible there, with the time, the direction and how high to look.
+- **Hide everything but the planet.** Press <kbd>C</kbd> for cinema mode: the panels step aside and the globe takes the window. Good on a second screen.
+- **Keep or send what you see.** <kbd>P</kbd> saves a picture of the globe with the date written on it. <kbd>L</kbd> copies a link that reopens Kármán looking at the same place from the same height, with the same NASA view on.
 
 <details>
 <summary><b>Keyboard</b></summary>
@@ -54,12 +60,21 @@ The name is the Kármán line: 100 km up, where the sky is said to end and space
 | Key | Does |
 |---|---|
 | <kbd>/</kbd> | Search |
+| <kbd>C</kbd> | Cinema mode: hide or show the panels |
+| <kbd>P</kbd> | Save a picture of the globe |
+| <kbd>L</kbd> | Copy a link to this view |
+| <kbd>F</kbd> | Full screen |
+| <kbd>S</kbd> | Spin or stop the globe |
+| <kbd>O</kbd> | Pull back to see every orbit |
+| <kbd>M</kbd> | Bring the Moon into view |
+| <kbd>R</kbd> | Reset the view |
+| <kbd>+</kbd> <kbd>−</kbd> | Zoom in and out |
+| Arrow keys | Turn the globe |
 | <kbd>T</kbd> | Start the tour |
 | <kbd>Space</kbd> or <kbd>K</kbd> | Pause the tour |
-| <kbd>←</kbd> <kbd>→</kbd> | Previous or next stop |
+| <kbd>←</kbd> <kbd>→</kbd> | Previous or next stop, in the tour |
 | <kbd>,</kbd> <kbd>.</kbd> | Slower or faster tour |
 | <kbd>M</kbd> | Tour music on or off |
-| <kbd>F</kbd> | Full screen, in the tour |
 | <kbd>Esc</kbd> | Close the open card, or leave the tour |
 
 </details>
@@ -77,7 +92,7 @@ To host it, put `index.html` on any static host.
 - **GitHub Pages:** Settings → Pages → Deploy from a branch → `main`, `/ (root)`.
 - **Netlify:** connect the repository, or drag the folder onto the dashboard. [`netlify.toml`](netlify.toml) is included.
 
-Add `#tour` to the address to start in tour mode.
+Add `#tour` to the address to start in tour mode. A link copied with <kbd>L</kbd> ends in `#@latitude,longitude,distance` and opens on that view.
 
 ## Build it
 
@@ -100,15 +115,17 @@ karman/
 │       ├── 00-core.js       helpers, layer registry, storage
 │       ├── 10-scene.js      the globe: shaders, markers, lines, picking
 │       ├── 30-ui.js         panels, cards, sources, guide
+│       ├── 35-sky.js        the real stars, the Moon and the Sun
 │       ├── 40 … 85          one file per family of feeds
 │       ├── 86-open.js       the opening sequence
 │       ├── 87-music.js      generative tour music (Web Audio)
 │       ├── 88-tour.js       tour mode
+│       ├── 89-cinema.js     cinema mode, pictures, links, keys
 │       └── 90-main.js       wiring, scheduler, frame loop
 ├── AGENTS.md              instructions for AI coding agents
 ├── .claude/               Claude Code settings, rules and skills
 ├── assets/                map data embedded at build time
-├── data/                  raw inputs for the two built-in datasets
+├── data/                  raw inputs for the built-in datasets (cables, reactors, energy, stars)
 ├── tools/                 build script and data preparation
 ├── tests/                 headless smoke tests with stand-in feeds
 └── docs/                  architecture notes, brand, screenshots
@@ -124,6 +141,8 @@ How the pieces fit is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). To change
 - **No backend.** Every feed is a public endpoint that answers browsers directly and needs no key. Requests go from the visitor's browser to the provider and nowhere else.
 - **Built to degrade.** Each source reports its own state in the Sources tab. Many have a backup provider or a saved copy, and one failing never stops the rest. The cable map and the reactor list are built in, so they draw with no connection at all.
 - **Orbits in the browser.** The position of every tracked satellite is computed from its orbital elements with SGP4 in a web worker.
+- **The sky is worked out, not downloaded.** The Sun, the Moon and the turning of the stars come from the date alone, and so do the times a space station can be seen from a place. The test suite checks all of it against PyEphem, a separate implementation: the Moon to a sixth of a degree, the stars to a hundredth, station passes to a few seconds.
+- **A polite guest.** CelesTrak, which publishes the orbits, refuses a list asked for twice within two hours and shuts out addresses that keep asking. Kármán asks for each list once, keeps a copy, and after any refusal leaves CelesTrak alone for a while, however often the page is reloaded, drawing from the saved copy meanwhile.
 - **A renderer made for data.** Land is a field of dots on a monochrome globe, so colour is kept for what is happening. One draw call per layer keeps tens of thousands of markers smooth.
 
 ## Data and credits
@@ -140,6 +159,7 @@ Kármán exists because these organisations publish their data openly. Thank you
 | **Cameras** | [Fintraffic Digitraffic](https://www.digitraffic.fi/en/road-traffic/) · [Transport for London](https://tfl.gov.uk/info-for/open-data-users/) · [LTA Singapore](https://data.gov.sg/) · [Caltrans](https://quickmap.dot.ca.gov/) |
 | **Infrastructure** | [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/), as cleaned by [Tristan Hotham](https://github.com/Tristan-Hotham/submarine-cables) · [IAEA PRIS](https://pris-stats.iaea.org/) via [GeoNuclearData](https://github.com/cristianst85/GeoNuclearData) · [Wikidata](https://www.wikidata.org/) · [Global Energy Monitor](https://globalenergymonitor.org/) (Global Integrated Power Tracker and Global Gas Infrastructure Tracker, CC BY 4.0) |
 | **Base map** | [Natural Earth](https://www.naturalearthdata.com/) · [NASA Earth Observatory](https://earthobservatory.nasa.gov/features/NightLights) · Peter Bird (2003) via [Hugo Ahlenius](https://github.com/fraxen/tectonicplates) |
+| **The sky** | [Yale Bright Star Catalogue](http://tdc-www.harvard.edu/catalogs/bsc5.html), 5th edition, via [Bretton Wade](https://github.com/brettonw/YaleBrightStarCatalog) |
 | **Software** | [three.js](https://threejs.org/) · [satellite.js](https://github.com/shashwatak/satellite-js) · [hls.js](https://github.com/video-dev/hls.js) · [Geist](https://vercel.com/font) · [Unbounded](https://github.com/googlefonts/unbounded) |
 
 What each one provides, where a backup steps in, and the terms it comes under are set out in **[NOTICE.md](NOTICE.md)**.
@@ -159,6 +179,8 @@ What each one provides, where a backup steps in, and the terms it comes under ar
 - **Cable routes** are schematic, as on the source map.
 - **Cameras** are those that road agencies publish as open data. None are private.
 - **Blocked feeds.** Some networks and ad blockers stop individual providers. The Sources tab shows which answered.
+- **Satellites after many reloads.** If CelesTrak turns a request down, the Sources tab says so and when it will be asked again. The satellites stay on the globe from the last saved copy.
+- **The Moon is drawn three times its true size** so that it is more than a dot. Its place, distance and phase are real. A space station pass is good to about a minute; the sky must be clear.
 - **Browsers.** Needs WebGL. Current Chrome, Edge, Firefox and Safari work, on desktop and phone.
 
 ## Contributing

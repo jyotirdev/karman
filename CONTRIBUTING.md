@@ -38,11 +38,14 @@ Edit files in `src/`, rebuild, reload. Never edit `index.html` by hand: it is ge
 npm install                  # once: test tooling only, the app itself has no dependencies
 npx playwright install chromium
 node tools/build.js
+node tests/tones.js          # NASA view recolouring; no browser needed
 node tests/smoke.js ok quake # expect "errors: none"
+node tests/smoke.js ok sky   # the sky against PyEphem's answers
 node tests/smoke.js offline boot
 ```
 
 - Commit the rebuilt `index.html` together with your source change.
+- If you touched a NASA satellite view, also run `node tests/smoke.js ok views`; for the built-in energy map, `node tests/smoke.js ok energy`; for anything that asks CelesTrak, `node tests/smoke.js ok limits`.
 - Check it at phone width as well as on a desktop.
 - If motion is involved, check it with "reduce motion" switched on in your system settings.
 - Keep pull requests to one idea each, and say in a sentence what a visitor will notice.

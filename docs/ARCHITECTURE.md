@@ -7,7 +7,7 @@ Kármán is a single HTML file. This page explains how the source in `src/` beco
 `node tools/build.js` does four things:
 
 1. joins every script in `src/app/` in name order and wraps them in one function, so they share a scope without leaking globals;
-2. replaces the placeholders in `src/app/05-assets.js` with the files in `assets/` (two small JPEGs as base64, packed line work, and the two reference datasets as literals);
+2. replaces the placeholders in `src/app/05-assets.js` with the files in `assets/` (two small JPEGs as base64, packed line work, the star catalogue, and the reference datasets as literals);
 3. inlines `src/style.css` and the joined script into `src/index.html`;
 4. writes `index.html`, and a copy of the script without the embedded data to `.build/app.check.js` for a quick syntax check.
 
@@ -23,8 +23,9 @@ The number at the start of each script's name sets the order. Later files may us
 | `05-assets.js` | The embedded map data |
 | `10-scene.js` | three.js scene: the globe and its shaders, the land dots, borders and plates, the marker and line renderers, picking, quality steps |
 | `30-ui.js` | Sources and their status, selection, detail cards (`DETAILS`), the "Right now" summary, the guide |
+| `35-sky.js` | The sky: the real stars, the Moon and the Sun's glare, each placed from the date; the Moon's card and the camera move that brings it into view |
 | `40-feeds.js` | Earthquakes, natural events, disaster alerts |
-| `50-space.js` | Satellites (orbital elements, SGP4 in a worker), space weather, launches, fireballs |
+| `50-space.js` | Satellites (orbital elements, SGP4 in a worker), the gate every CelesTrak request goes through, the passes of a station over a place, space weather, launches, fireballs |
 | `60-people.js` | Cities and weather, wind, clouds, news, radio, the "any place" card, search |
 | `70-more.js` | Fire hotspots, wildlife, Earth from deep space, space news, country facts, bedrock |
 | `80-deep.js` | Debris and catalogue records, the Sun, listening, carbon dioxide |
@@ -36,6 +37,7 @@ The number at the start of each script's name sets the order. Later files may us
 | `86-open.js` | The opening sequence and loading read-out |
 | `87-music.js` | Tour music, generated with Web Audio, and the steps that get it ready ahead of time |
 | `88-tour.js` | Tour mode: route, camera, captions, controls, and the hand-over from the turning globe |
+| `89-cinema.js` | Cinema mode, saving a picture, the link to a view, keyboard shortcuts |
 | `90-main.js` | Wiring: layer toggles, pointer, the feed scheduler, staged start-up, the frame loop |
 
 ## How a feed becomes markers
@@ -79,7 +81,7 @@ The press that starts the tour does almost nothing, because everything slow has 
 
 ## Built-in datasets
 
-The cable map and the reactor list do not come from a live feed. `tools/make-data.py` turns the raw files in `data/` into the compact files in `assets/`, which the build embeds. See [`data/README.md`](../data/README.md). The energy map (the larger power stations, gas pipelines and LNG terminals) is built the same way by `tools/make-energy.py`, in two steps: Global Energy Monitor's files are first cut down to three readable extracts in `data/`, and those are packed into `assets/energy.json`.
+The cable map, the reactor list and the stars do not come from a live feed. `tools/make-data.py` turns the raw files in `data/` into the compact files in `assets/`, which the build embeds. See [`data/README.md`](../data/README.md). The energy map (the larger power stations, gas pipelines and LNG terminals) is built the same way by `tools/make-energy.py`, in two steps: Global Energy Monitor's files are first cut down to three readable extracts in `data/`, and those are packed into `assets/energy.json`.
 
 ## Tests
 
@@ -94,3 +96,33 @@ A view is one picture of the whole Earth, 2048 by 1024, fetched from NASA GIBS a
 - **Recolouring.** NASA paints some measurements across the whole globe in colours meant for a white map: clean air in pale yellow, no volcanic gas in dark blue. `OVER_TONE` clears that colour and keeps the rest. Each function is written against NASA's colour table for its layer, and leaves any pixel that is not in the expected colours untouched. `tests/tones.js` checks them.
 - **The sharper window.** One dot of the whole-Earth picture is 20 km. When the globe is still and close enough for that to show, the same layers and days are fetched again for a window around the centre of the screen (180° wide down to 11.25°, snapped to a grid), and the shader blends it over the coarse picture with a soft edge.
 - **What it relies on.** Only instruments with years ahead of them: VIIRS and OMPS on NOAA-20 and NOAA-21, SMAP, Sentinel-5P, and NASA's multi-satellite rain and sea analyses. Nothing depends on Terra, Aqua or Aura, which are being retired.
+
+## The sky
+
+The scene is fixed to the Earth: the globe never turns, and the Sun goes round it. So the sky turns instead, once a sidereal day. `skyTick`, called once a second with the clock, does three things.
+
+- **Stars.** `assets/stars.b64` holds the 8,404 stars of the Yale Bright Star Catalogue down to magnitude 6.5, six bytes each: right ascension, declination, brightness, colour temperature. They are built once as points on a sphere of radius 200 with longitude equal to right ascension. Two turns bring that sphere to the present: precession since the year 2000 (a turn about the pole of the ecliptic, 50.29 seconds of arc a year), then the Earth's spin (a turn about the axis by sidereal time).
+- **The Moon.** `moonInfo` in `00-core.js` is the Astronomical Almanac's short series: good to a third of a degree and about 1,200 km. The Moon is a sphere at its true direction and distance (about 60 Earth radii, inside the camera's far plane of 400), three times its true size. Its shader takes the same Sun direction as the globe, so the phase is not computed: it is simply what the lighting shows. The dark seas are ten soft patches placed in a frame that faces the Earth with the pole of the ecliptic up.
+- **The Sun.** A glare on a camera-facing square, 190 units out along the Sun's direction.
+
+The stars and the glare are tested against the depth the globe and the Moon have already written, so neither shows through them. That order matters: both are see-through objects, and three.js draws those after the solid ones.
+
+Nothing here is downloaded. `tests/smoke.js ok sky` checks every part against PyEphem (see [`tests/README.md`](../tests/README.md)).
+
+`stationPasses` in `50-space.js` uses the same Sun: it steps a station's orbit through the coming week in 40-second steps, walks each rise in 4-second steps, and keeps the stretch where the station is at least 10° up, outside the cylinder of shadow behind the Earth, and the Sun is at least 6° below the watcher's horizon.
+
+## CelesTrak
+
+CelesTrak refuses a list fetched twice within two hours and shuts out addresses that go on asking after a refusal. Every request to it therefore goes through `celestrak()` in `50-space.js`, and nothing else may fetch from celestrak.org.
+
+- One request at a time, half a second apart, and never a second try.
+- A named list is not asked for again within two hours, even if saving the first answer failed. The times are kept in the browser (`ern:ct-asked`).
+- Any refusal starts a rest: two hours after a 4xx, thirty minutes after a 5xx or no answer at all (a shut-out address gets silence, not an error). The rest is kept in the browser (`ern:ct-hold`), so reloading the page does not end it.
+- `fetchGP` uses the saved copy of a list while it is fresh, and falls back to it when CelesTrak cannot or should not be asked, up to a fortnight old (36 hours for the stations). The source then shows a warning that says why and when CelesTrak will be asked again.
+
+`tests/smoke.js ok limits` reloads the page through each of these cases and counts the requests.
+
+## Cinema mode, pictures and links
+
+`89-cinema.js`. Cinema mode adds the class `cinema` to `#app`, which fades the panels the same way the tour does, sets `view.bare` so that `resize()` lets the globe use the whole window, and shows a caption. A picture is made by drawing one more frame and copying the canvas in the same task (the drawing buffer is not kept between frames), then writing the wordmark and the date over it. A link is `#@latitude,longitude,distance,view`; on arrival the opening sequence plays as usual and the globe then flies to the view.
+

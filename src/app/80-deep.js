@@ -75,7 +75,8 @@ const SITES = { AFETR: 'Cape Canaveral, Florida', AFWTR: 'Vandenberg, California
   SEAL: 'a platform in the Pacific Ocean', NSC: 'Naro, South Korea', SEMLS: 'Semnan, Iran', SMTS: 'Shahrud, Iran', YUN: 'Sohae, North Korea', PALB: 'Palmachim, Israel', WOMRA: 'Woomera, Australia', HGSTR: 'Hammaguir, Algeria',
   SNMLP: 'the San Marco platform off Kenya', ERAS: 'an aircraft over the Atlantic', WRAS: 'an aircraft over the Pacific', SUBL: 'a submarine in the Barents Sea' };
 const OPS = { '+': 'working', '-': 'no longer working', P: 'partly working', B: 'kept as a backup', S: 'kept as a spare', X: 'on an extended mission', D: 'fallen from orbit', '?': 'status unknown' };
-const satcat = {};
+const SATCAT_KEEP = ['OBJECT_TYPE', 'OPS_STATUS_CODE', 'OWNER', 'LAUNCH_DATE', 'LAUNCH_SITE', 'RCS'];
+const satcat = store.get('satcat', 30 * 864e5) || {};        /* catalogue records already looked up, kept a month so nothing is asked for twice */
 function paintSatcat(it, r) {
   const kind = { PAY: 'Satellite', 'R/B': 'Rocket stage', DEB: 'Debris', UNK: 'Unidentified object' }[r.OBJECT_TYPE] || 'Object';
   slot(it, 'sc-kind', esc(kind + (r.OBJECT_TYPE === 'PAY' && OPS[r.OPS_STATUS_CODE] ? ', ' + OPS[r.OPS_STATUS_CODE] : '')));
@@ -89,11 +90,13 @@ function loadSatcat(it) {
   const id = String(+it.id);
   if (satcat[id]) return paintSatcat(it, satcat[id]);
   const none = () => { slot(it, 'sc-kind', esc(LAYERS[it.layer].one)); slot(it, 'sc-owner', 'Unavailable'); slot(it, 'sc-size', 'Unavailable'); const el = $('[data-slot="sc-launch"]', detailEl); if (el && el.querySelector('.skel')) slot(it, 'sc-launch', 'Unavailable'); };
-  getJSON('https://celestrak.org/satcat/records.php?CATNR=' + encodeURIComponent(id) + '&FORMAT=json', 15000).then(d => {
+  celestrak('https://celestrak.org/satcat/records.php?CATNR=' + encodeURIComponent(id) + '&FORMAT=json', 15000).then(d => {
     const r = Array.isArray(d) ? d[0] : null;
     if (!r) throw new Error('empty');
-    satcat[id] = r; setStatus('satcat', 'ok'); paintSatcat(it, r);
-  }).catch(e => { setStatus('satcat', 'err', errNote(e)); none(); });
+    const ids = Object.keys(satcat); if (ids.length >= 80) delete satcat[ids[0]];
+    satcat[id] = SATCAT_KEEP.reduce((o, k) => { if (r[k] != null) o[k] = r[k]; return o; }, {}); store.set('satcat', satcat);
+    setStatus('satcat', 'ok'); paintSatcat(it, r);
+  }).catch(e => { setStatus('satcat', e && e.rest ? 'warn' : 'err', errNote(e)); none(); });
 }
 function findSat(id) {
   for (const k of SAT_KEYS.concat('stations')) { const it = layers[k].items.find(x => +x.id === +id); if (it) return it; }
@@ -115,7 +118,7 @@ async function loadSocrates() {
   try {
     let rows = store.get('calls', 5 * 3600000);
     if (!rows) {
-      const text = await getJSON('https://celestrak.org/SOCRATES/sort-minRange.csv', 40000, true);
+      const text = await celestrak('https://celestrak.org/SOCRATES/sort-minRange.csv', 40000, true, 'socrates');
       const lines = String(text).trim().split(/\r?\n/), head = csvLine(lines[0]).map(h => h.trim()), ix = n => head.indexOf(n);
       if (ix('TCA') < 0 || ix('TCA_RANGE') < 0) throw new Error('unexpected format');
       const name = s => String(s || '').replace(/\s*\[[^\]]*\]\s*$/, '').trim();
@@ -133,7 +136,7 @@ async function loadSocrates() {
     setStatus('socrates', 'ok'); orbitChanged();
   } catch (e) {
     const old = store.get('calls');
-    if (old && old.length) { extra.calls = old.filter(r => r.t > Date.now()).slice(0, 12); setStatus('socrates', 'warn', 'provider unreachable, showing the last saved list'); }
+    if (old && old.length) { extra.calls = old.filter(r => r.t > Date.now()).slice(0, 12); setStatus('socrates', 'warn', (e && e.rest ? errNote(e) : 'provider unreachable') + ', showing the last saved list'); orbitChanged(); }
     else setStatus('socrates', 'err', errNote(e));
   }
 }
@@ -426,6 +429,8 @@ function deepClick(e) {
   if (a === 'scan') setScan(!scan.on);
   else if (a === 'shuffle') { setScan(false); radioShuffle(); }
   else if (a === 'overlay-off') setOverlay('');
+  else if (a === 'moon') { selectMoon(); seeMoon(); }
+  else if (a === 'moon-see') seeMoon();
   return true;
 }
 
